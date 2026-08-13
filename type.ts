@@ -5,3 +5,5 @@ interface Articulo {
   descripcion: string;
   disponible: boolean;
 }
+
+/*para el pull*/
