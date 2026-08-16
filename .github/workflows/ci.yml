@@ -1,0 +1,61 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: lendit
+          POSTGRES_PASSWORD: lendit
+          POSTGRES_DB: lendit
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U lendit -d lendit"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      DATABASE_URL: postgres://lendit:lendit@localhost:5433/lendit
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint and format
+        run: pnpm lint:ci
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # The constraint suite skips itself without a database, so the schema has
+      # to be live before tests run or the most important cases quietly vanish.
+      - name: Apply schema
+        run: pnpm db:push
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build client
+        run: pnpm --filter @lendit/web build

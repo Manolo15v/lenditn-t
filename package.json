@@ -9,11 +9,13 @@
   "scripts": {
     "typecheck": "pnpm -r exec tsc --noEmit",
     "lint": "biome check .",
+    "lint:ci": "biome ci .",
     "format": "biome check --write .",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:push": "pnpm --filter @lendit/db push",
     "db:seed": "pnpm --filter @lendit/db seed",
+    "db:studio": "pnpm --filter @lendit/db studio",
     "dev:api": "pnpm --filter @lendit/api dev",
     "dev:web": "pnpm --filter @lendit/web dev"
   },
