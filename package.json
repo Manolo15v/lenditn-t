@@ -8,17 +8,26 @@
   },
   "scripts": {
     "typecheck": "pnpm -r exec tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:push": "pnpm --filter @lendit/db push",
     "db:seed": "pnpm --filter @lendit/db seed",
     "dev:api": "pnpm --filter @lendit/api dev",
     "dev:web": "pnpm --filter @lendit/web dev"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.8",
     "@types/node": "^26.2.0",
+    "dotenv": "^17.4.2",
     "tsx": "^4.23.12",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }

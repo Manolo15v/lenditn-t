@@ -8,4 +8,5 @@ if (!url) throw new Error('DATABASE_URL is not set (expected in the root .env)')
 export const pg = postgres(url)
 export const db = drizzle(pg, { schema })
 
+export * from './errors.ts'
 export * from './schema.ts'

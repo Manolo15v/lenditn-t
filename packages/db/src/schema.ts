@@ -98,9 +98,7 @@ export const loans = pgTable(
     // The load-bearing constraint. A second active loan on one item is
     // physically un-insertable; a check-then-insert in app code has a race
     // window no matter how it is written. Catch 23505 and return 409.
-    uniqueIndex('loans_one_active_per_item')
-      .on(t.itemId)
-      .where(sql`${t.status} = 'active'`),
+    uniqueIndex('loans_one_active_per_item').on(t.itemId).where(sql`${t.status} = 'active'`),
     index('loans_item_idx').on(t.itemId),
     index('loans_borrower_idx').on(t.borrowerId),
     check('loans_due_after_request', sql`${t.dueAt} > ${t.requestedAt}`),

@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema.ts"
+    "./schema": "./src/schema.ts",
+    "./validation": "./src/validation.ts"
   },
   "scripts": {
     "push": "drizzle-kit push --force",
@@ -17,10 +18,13 @@
   "dependencies": {
     "@paralleldrive/cuid2": "^3.3.0",
     "drizzle-orm": "^0.45.2",
-    "postgres": "^3.4.9"
+    "drizzle-zod": "^0.8.3",
+    "postgres": "^3.4.9",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "dotenv": "^17.4.2",
-    "drizzle-kit": "^0.31.10"
+    "drizzle-kit": "^0.31.10",
+    "vitest": "^4.1.10"
   }
 }

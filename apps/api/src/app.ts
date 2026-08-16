@@ -1,9 +1,10 @@
-import { Hono } from 'hono'
 import { pg } from '@lendit/db'
+import { Hono } from 'hono'
+import type { AppEnv } from './env.ts'
+import { attachUser } from './middleware.ts'
+import { auth } from './routes/auth.ts'
 
-// Routes are declared on sub-apps and mounted with .route() so the chained
-// types survive — that chain is what `hc<AppType>` on the client reads.
-const health = new Hono().get('/health', async (c) => {
+const health = new Hono<AppEnv>().get('/health', async (c) => {
   try {
     await pg`select 1`
     return c.json({ status: 'ok', db: true } as const)
@@ -12,7 +13,9 @@ const health = new Hono().get('/health', async (c) => {
   }
 })
 
-export const app = new Hono().route('/api', health)
+export const app = new Hono<AppEnv>()
+  .use('*', attachUser)
+  .route('/api', health)
+  .route('/api/auth', auth)
 
-// The client's only import from this package, and it is type-only.
 export type AppType = typeof app
