@@ -1,0 +1,25 @@
+# Project name is pinned: the repo directory ("lenditn't") is not a legal
+# Compose project name, so Compose would refuse to derive one from it.
+name: lendit
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: lendit
+      POSTGRES_PASSWORD: lendit
+      POSTGRES_DB: lendit
+    ports:
+      # Host 5433 so this never collides with a local Postgres on 5432.
+      - "5433:5432"
+    volumes:
+      - pg18data:/var/lib/postgresql
+    healthcheck:
+      # Tilt's resource_deps waits on this, not on "container started".
+      test: ["CMD-SHELL", "pg_isready -U lendit -d lendit"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  pg18data:

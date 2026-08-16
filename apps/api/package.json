@@ -1,0 +1,19 @@
+{
+  "name": "@lendit/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/app.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/server.ts",
+    "start": "tsx --env-file=../../.env src/server.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.1",
+    "@lendit/db": "workspace:*",
+    "@lendit/shared": "workspace:*",
+    "hono": "^4.13.2"
+  }
+}

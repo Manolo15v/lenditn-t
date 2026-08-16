@@ -1,0 +1,24 @@
+{
+  "name": "lendit",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r exec tsc --noEmit",
+    "db:push": "pnpm --filter @lendit/db push",
+    "db:seed": "pnpm --filter @lendit/db seed",
+    "dev:api": "pnpm --filter @lendit/api dev",
+    "dev:web": "pnpm --filter @lendit/web dev"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
