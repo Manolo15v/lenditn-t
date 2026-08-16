@@ -13,7 +13,4 @@ export default defineConfig({
   schema: './src/schema.ts',
   out: './migrations',
   dbCredentials: { url },
-  // `push` in dev only. Deployed databases get generate + migrate — push would
-  // happily drop columns to make the database match the schema file.
-  strict: true,
 })
