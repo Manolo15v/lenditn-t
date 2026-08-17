@@ -1,5 +1,6 @@
-import { type ReactNode, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from './api.ts'
+import { ItemsDashboard } from './components/ItemsDashboard.tsx'
 
 type User = { id: string; name: string; email: string; createdAt: string }
 type Mode = 'login' | 'signup'
@@ -59,84 +60,243 @@ export function App() {
     setUser(null)
   }
 
-  if (loading) return <Shell>Loading…</Shell>
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          height: '100vh',
+          width: '100vw',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        <p style={{ fontSize: '1.2rem', fontWeight: 500, letterSpacing: '0.05em' }}>
+          Loading Lendit...
+        </p>
+      </div>
+    )
+  }
 
   if (user) {
     return (
-      <Shell>
-        <p>
-          Signed in as <strong>{user.name}</strong> ({user.email}).
-        </p>
-        <button type="button" onClick={logout}>
-          Log out
-        </button>
-      </Shell>
+      <div
+        className="animate-fade-in"
+        style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+      >
+        {/* Sticky Premium Header */}
+        <header
+          className="glass-panel"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
+            padding: '1rem 2rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: 'rgba(11, 15, 25, 0.8)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span
+              style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--primary)',
+                boxShadow: '0 0 10px var(--primary-glow)',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '1.4rem',
+                fontWeight: 800,
+                letterSpacing: '-0.02em',
+                color: '#fff',
+              }}
+            >
+              Lendit
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              Logged in as <strong style={{ color: 'var(--text-primary)' }}>{user.name}</strong>
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={logout}
+              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+            >
+              Log out
+            </button>
+          </div>
+        </header>
+
+        {/* Dashboard */}
+        <main style={{ flexGrow: 1 }}>
+          <ItemsDashboard currentUserId={user.id} currentUserName={user.name} />
+        </main>
+      </div>
     )
   }
 
   return (
-    <Shell>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          void submit(new FormData(event.currentTarget))
-        }}
-      >
-        {mode === 'signup' && (
-          <label>
-            Name
-            <input name="name" required maxLength={80} autoComplete="name" />
-          </label>
-        )}
-        <label>
-          Email
-          <input name="email" type="email" required autoComplete="email" />
-        </label>
-        <label>
-          Password
-          <input
-            name="password"
-            type="password"
-            required
-            minLength={mode === 'signup' ? 8 : undefined}
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-          />
-        </label>
-
-        {error && <p role="alert">{error}</p>}
-
-        <button type="submit" disabled={busy}>
-          {mode === 'signup' ? 'Create account' : 'Log in'}
-        </button>
-      </form>
-
-      <button
-        type="button"
-        onClick={() => {
-          setMode(mode === 'login' ? 'signup' : 'login')
-          setError(null)
-        }}
-      >
-        {mode === 'login' ? 'Need an account?' : 'Already have one?'}
-      </button>
-    </Shell>
-  )
-}
-
-function Shell({ children }: { children: ReactNode }) {
-  return (
-    <main
+    <div
       style={{
-        fontFamily: 'system-ui, sans-serif',
-        maxWidth: '22rem',
-        margin: '4rem auto',
-        padding: '0 1rem',
-        display: 'grid',
-        gap: '1rem',
+        display: 'flex',
+        minHeight: '100vh',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem 1rem',
       }}
     >
-      <h1 style={{ margin: 0 }}>Lendit</h1>
-      {children}
-    </main>
+      <div
+        className="glass-panel animate-fade-in"
+        style={{
+          width: '100%',
+          maxWidth: '26rem',
+          padding: '2.5rem 2rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <h1
+            style={{
+              fontSize: '2.5rem',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              background: 'linear-gradient(135deg, #fff 0%, var(--primary) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '0.5rem',
+            }}
+          >
+            Lendit
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+            {mode === 'signup'
+              ? 'Create an account to start lending'
+              : 'Sign in to access student materials'}
+          </p>
+        </div>
+
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void submit(new FormData(event.currentTarget))
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+        >
+          {mode === 'signup' && (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="name" className="form-label">
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                className="form-input"
+                required
+                maxLength={80}
+                autoComplete="name"
+                placeholder="e.g. Manuel Velazco"
+                disabled={busy}
+              />
+            </div>
+          )}
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="email" className="form-label">
+              Email Address
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              className="form-input"
+              required
+              autoComplete="email"
+              placeholder="name@university.edu"
+              disabled={busy}
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="password" className="form-label">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className="form-input"
+              required
+              minLength={mode === 'signup' ? 8 : undefined}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              placeholder="••••••••"
+              disabled={busy}
+            />
+          </div>
+
+          {error && (
+            <p
+              role="alert"
+              style={{
+                fontSize: '0.85rem',
+                color: 'var(--danger)',
+                background: 'rgba(239, 68, 68, 0.1)',
+                padding: '0.5rem 0.75rem',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                textAlign: 'center',
+                margin: '0.5rem 0',
+              }}
+            >
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={busy}
+            style={{ width: '100%', marginTop: '0.5rem' }}
+          >
+            {busy ? 'Processing...' : mode === 'signup' ? 'Create Account' : 'Sign In'}
+          </button>
+        </form>
+
+        <div
+          style={{
+            textAlign: 'center',
+            borderTop: '1px solid var(--border-color)',
+            paddingTop: '1.25rem',
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{ width: '100%', fontSize: '0.9rem' }}
+            onClick={() => {
+              setMode(mode === 'login' ? 'signup' : 'login')
+              setError(null)
+            }}
+            disabled={busy}
+          >
+            {mode === 'login' ? 'Need a new account? Sign up' : 'Already have an account? Sign in'}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
