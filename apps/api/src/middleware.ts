@@ -8,3 +8,11 @@ export const attachUser = createMiddleware<AppEnv>(async (c, next) => {
   c.set('user', token ? await resolveSession(token) : null)
   await next()
 })
+
+// Resolving and requiring are separate: `/me` has to answer for an anonymous
+// caller, while every route that acts on someone's behalf must refuse one.
+// Mount after attachUser, and read c.get('user') downstream — it is non-null there.
+export const requireUser = createMiddleware<AppEnv>(async (c, next) => {
+  if (!c.get('user')) return c.json({ error: 'unauthenticated' } as const, 401)
+  await next()
+})

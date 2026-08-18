@@ -46,8 +46,10 @@ export function App() {
         return
       }
 
-      const me = await (await api.api.auth.me.$get()).json()
-      setUser(me.user)
+      // Both routes answer with the user, so there is no follow-up /me here. The
+      // cookie is already set; /me exists for the reload path only.
+      const { user: signedIn } = (await res.json()) as { user: User }
+      setUser(signedIn)
     } catch {
       setError('Could not reach the server.')
     } finally {

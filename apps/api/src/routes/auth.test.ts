@@ -144,6 +144,13 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
     expect(cookieFrom(ok)).toContain(`${SESSION_COOKIE}=`)
     expect((await me(tokenFrom(ok))).user?.email).toBe(email)
 
+    // Login answers with the user, so the client needs no follow-up /me — which
+    // is exactly why the hash must be destructured out of the row it selects.
+    const body = await ok.clone().text()
+    expect(body).not.toContain('passwordHash')
+    expect(body).not.toContain('$argon2id$')
+    expect((await json<{ user: SessionUserBody }>(ok)).user.email).toBe(email)
+
     const wrong = await post('/api/auth/login', { email, password: 'correct-hors' })
     expect(wrong.status).toBe(401)
     expect(await json(wrong)).toEqual({ error: 'invalid_credentials' })
