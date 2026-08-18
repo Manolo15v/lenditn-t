@@ -5,6 +5,7 @@ import { isForeignKeyViolation, pgErrorCode } from './errors.ts'
 import { db } from './index.ts'
 import { itemIsAvailable } from './queries.ts'
 import { items, loans, users } from './schema.ts'
+import { databaseIsReachable } from './testing.ts'
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -56,7 +57,7 @@ async function seedOwnerBorrowerItem(tx: Tx) {
   return { ownerId: owner.id, borrowerId: borrower.id, itemId: item.id }
 }
 
-describe.skipIf(!process.env.DATABASE_URL)('database constraints', () => {
+describe.skipIf(!(await databaseIsReachable()))('database constraints', () => {
   test('a second active loan on one item is impossible', async () => {
     await inRollback(async (tx) => {
       const { ownerId, borrowerId, itemId } = await seedOwnerBorrowerItem(tx)

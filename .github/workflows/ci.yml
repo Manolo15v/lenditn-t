@@ -49,8 +49,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      # The constraint suite skips itself without a database, so the schema has
-      # to be live before tests run or the most important cases quietly vanish.
+      # The database-backed suites skip themselves on a developer machine, but
+      # never when CI is set — so this step failing turns the build red instead
+      # of quietly deleting the cases that matter most.
       - name: Apply schema
         run: pnpm db:push
 

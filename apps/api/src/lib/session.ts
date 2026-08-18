@@ -45,5 +45,7 @@ export async function destroySession(token: string) {
   await db.delete(sessions).where(eq(sessions.id, digest(token)))
 }
 
+// Expiry is already enforced at read time, so this only reclaims rows. Returning
+// the ids keeps the count typed without reaching into the driver result.
 export const purgeExpiredSessions = () =>
-  db.delete(sessions).where(lt(sessions.expiresAt, new Date()))
+  db.delete(sessions).where(lt(sessions.expiresAt, new Date())).returning({ id: sessions.id })
