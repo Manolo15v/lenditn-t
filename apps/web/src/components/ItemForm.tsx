@@ -1,10 +1,12 @@
+import { ITEM_CATEGORIES, type ItemCategory } from '@lendit/shared'
 import { useState } from 'react'
 
+// No price field: lending is free, and the fee path is deferred. The column
+// still exists and defaults to 0, so adding the input back is additive.
 export interface ItemFormData {
   name: string
   description: string
-  category: string
-  pricePerDayCents: number
+  category: ItemCategory
 }
 
 interface ItemFormProps {
@@ -12,45 +14,27 @@ interface ItemFormProps {
   onSubmit: (data: ItemFormData) => void
   onCancel: () => void
   busy?: boolean
+  error?: string | null
 }
 
-export function ItemForm({ initialData, onSubmit, onCancel, busy = false }: ItemFormProps) {
+export function ItemForm({
+  initialData,
+  onSubmit,
+  onCancel,
+  busy = false,
+  error = null,
+}: ItemFormProps) {
   const [formData, setFormData] = useState<ItemFormData>({
     name: initialData?.name ?? '',
     description: initialData?.description ?? '',
     category: initialData?.category ?? 'Other',
-    pricePerDayCents: initialData?.pricePerDayCents ?? 0,
   })
-
-  // State to hold display price in dollars/decimals
-  const [displayPrice, setDisplayPrice] = useState<string>(
-    initialData ? (initialData.pricePerDayCents / 100).toFixed(2) : '0.00',
-  )
-
-  const categories = ['Calculators', 'Lab Coats', 'Drafting Kits', 'Soldering Irons', 'Other']
 
   function handleInputChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) {
     const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-  }
-
-  function handlePriceChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const rawVal = e.target.value
-    setDisplayPrice(rawVal)
-
-    // Convert to cents
-    const floatVal = parseFloat(rawVal)
-    if (!Number.isNaN(floatVal) && floatVal >= 0) {
-      setFormData((prev) => ({
-        ...prev,
-        pricePerDayCents: Math.round(floatVal * 100),
-      }))
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -106,7 +90,7 @@ export function ItemForm({ initialData, onSubmit, onCancel, busy = false }: Item
               backgroundImage: 'radial-gradient(circle, var(--text-muted) 10%, transparent 10%)',
             }}
           >
-            {categories.map((cat) => (
+            {ITEM_CATEGORIES.map((cat) => (
               <option
                 key={cat}
                 value={cat}
@@ -116,34 +100,6 @@ export function ItemForm({ initialData, onSubmit, onCancel, busy = false }: Item
               </option>
             ))}
           </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="displayPrice" className="form-label">
-            Daily Rental Fee (USD)
-          </label>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <span style={{ position: 'absolute', left: '1rem', color: 'var(--text-muted)' }}>
-              $
-            </span>
-            <input
-              id="displayPrice"
-              name="displayPrice"
-              type="number"
-              step="0.01"
-              min="0"
-              className="form-input"
-              style={{ paddingLeft: '2rem', width: '100%' }}
-              placeholder="0.00"
-              value={displayPrice}
-              onChange={handlePriceChange}
-              required
-              disabled={busy}
-            />
-          </div>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Equivalent to {formData.pricePerDayCents} integer cents in database.
-          </span>
         </div>
 
         <div className="form-group">
@@ -159,9 +115,27 @@ export function ItemForm({ initialData, onSubmit, onCancel, busy = false }: Item
             placeholder="Condition, pickup location, or specific requirements..."
             value={formData.description}
             onChange={handleInputChange}
+            maxLength={2000}
             disabled={busy}
           />
         </div>
+
+        {error && (
+          <p
+            role="alert"
+            style={{
+              fontSize: '0.85rem',
+              color: 'var(--danger)',
+              background: 'rgba(239, 68, 68, 0.1)',
+              padding: '0.5rem 0.75rem',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              margin: 0,
+            }}
+          >
+            {error}
+          </p>
+        )}
 
         <div
           style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', justifyContent: 'flex-end' }}

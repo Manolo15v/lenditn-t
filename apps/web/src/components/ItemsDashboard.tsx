@@ -1,156 +1,138 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { api, type Item } from '../api.ts'
 import { ItemForm, type ItemFormData } from './ItemForm.tsx'
-import { type Item, ItemList } from './ItemList.tsx'
+import { ItemList } from './ItemList.tsx'
 
 interface ItemsDashboardProps {
   currentUserId: string
-  currentUserName: string
 }
 
-// Pre-seeded mock items for preview
-const INITIAL_MOCK_ITEMS: Item[] = [
-  {
-    id: 'item_1',
-    ownerId: 'user_bob',
-    ownerName: 'Bob Jenkins',
-    name: 'Texas Instruments TI-84 Plus CE',
-    description:
-      'Graphing calculator in great condition. Backlight screen works perfectly. Includes charging cable.',
-    category: 'Calculators',
-    pricePerDayCents: 150, // $1.50
-    createdAt: new Date().toISOString(),
-    isAvailable: true,
-  },
-  {
-    id: 'item_2',
-    ownerId: 'user_alice',
-    ownerName: 'Alice Smith',
-    name: 'Chemistry Lab Coat (Size M)',
-    description:
-      'White, heavy-duty cotton lab coat. Cleaned and ironed. Fits medium/large sizes. Needed for CHEM-101.',
-    category: 'Lab Coats',
-    pricePerDayCents: 100, // $1.00
-    createdAt: new Date().toISOString(),
-    isAvailable: true,
-  },
-  {
-    id: 'item_3',
-    ownerId: 'user_manolo', // Current user's items
-    ownerName: 'Manuel Velazco',
-    name: 'Professional Soldering Iron Kit',
-    description:
-      'Adjustable temperature soldering iron (60W). Comes with solder wire, desoldering pump, and 5 tips.',
-    category: 'Soldering Irons',
-    pricePerDayCents: 300, // $3.00
-    createdAt: new Date().toISOString(),
-    isAvailable: false, // Simulated active loan
-  },
-  {
-    id: 'item_4',
-    ownerId: 'user_charlie',
-    ownerName: 'Charlie Brown',
-    name: 'Standard Drafting Board & Kit',
-    description:
-      'Parallel motion drafting board (A3 size), set squares, and drawing clips. Ideal for engineering graphics course.',
-    category: 'Drafting Kits',
-    pricePerDayCents: 200, // $2.00
-    createdAt: new Date().toISOString(),
-    isAvailable: true,
-  },
-]
+type Scope = 'all' | 'mine'
+type Notice = { text: string; type: 'success' | 'info' | 'error' }
 
-export function ItemsDashboard({ currentUserId, currentUserName }: ItemsDashboardProps) {
-  const [items, setItems] = useState<Item[]>(INITIAL_MOCK_ITEMS)
+const messages: Record<string, string> = {
+  not_owner: 'That item belongs to someone else.',
+  not_found: 'That item no longer exists.',
+  archived: 'That item is archived, so it cannot be edited.',
+  unauthenticated: 'Your session expired. Sign in again.',
+}
+
+// The form works in strings; the wire wants null for "not provided", because an
+// empty description is absence, not the empty string.
+const toBody = (data: ItemFormData) => ({
+  name: data.name.trim(),
+  description: data.description.trim() || null,
+  category: data.category,
+})
+
+export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
+  const [items, setItems] = useState<Item[]>([])
+  const [scope, setScope] = useState<Scope>('all')
+  const [loading, setLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [busy, setBusy] = useState(false)
-  const [notification, setNotification] = useState<{
-    text: string
-    type: 'success' | 'info'
-  } | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<Notice | null>(null)
 
-  function triggerNotification(text: string, type: 'success' | 'info' = 'success') {
-    setNotification({ text, type })
-    setTimeout(() => {
-      setNotification(null)
-    }, 4000)
-  }
+  // Stable so that `load` is stable, so that the effect below runs on a scope
+  // change and not on every render. Only setState calls inside, so [] is honest.
+  const announce = useCallback((text: string, type: Notice['type'] = 'success') => {
+    setNotice({ text, type })
+    setTimeout(() => setNotice(null), 4000)
+  }, [])
 
-  function handleCreateItem(data: ItemFormData) {
-    setBusy(true)
-    // Simulate API delay
-    setTimeout(() => {
-      const newItem: Item = {
-        id: `item_${Date.now()}`,
-        ownerId: currentUserId,
-        ownerName: currentUserName,
-        name: data.name,
-        description: data.description || null,
-        category: data.category || null,
-        pricePerDayCents: data.pricePerDayCents,
-        createdAt: new Date().toISOString(),
-        isAvailable: true,
+  const load = useCallback(
+    async (next: Scope) => {
+      setLoading(true)
+      try {
+        // ?mine=true is the owner's view and includes archived rows; plain browse
+        // hides them. Availability comes down derived either way.
+        const res = await api.api.items.$get({ query: next === 'mine' ? { mine: 'true' } : {} })
+        if (!res.ok) throw new Error('failed')
+        setItems((await res.json()).items)
+      } catch {
+        announce('Could not load items.', 'error')
+      } finally {
+        setLoading(false)
       }
+    },
+    [announce],
+  )
 
-      setItems((prev) => [newItem, ...prev])
-      setIsAdding(false)
-      setBusy(false)
-      triggerNotification(`"${data.name}" listed successfully!`)
-    }, 800)
+  useEffect(() => {
+    void load(scope)
+  }, [load, scope])
+
+  // Every mutation re-reads the list rather than patching state locally:
+  // isAvailable is derived server-side, so a local guess would be a second,
+  // wrong definition of it.
+  async function afterMutation(text: string, type: Notice['type'] = 'success') {
+    setIsAdding(false)
+    setEditingItem(null)
+    setFormError(null)
+    await load(scope)
+    announce(text, type)
   }
 
-  function handleEditItem(data: ItemFormData) {
-    if (!editingItem) return
+  async function failed(res: Response) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    return messages[body.error ?? ''] ?? 'Something went wrong.'
+  }
+
+  async function handleCreateItem(data: ItemFormData) {
     setBusy(true)
-    // Simulate API delay
-    setTimeout(() => {
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === editingItem.id
-            ? {
-                ...it,
-                name: data.name,
-                description: data.description || null,
-                category: data.category || null,
-                pricePerDayCents: data.pricePerDayCents,
-              }
-            : it,
-        ),
-      )
-      setEditingItem(null)
+    setFormError(null)
+    try {
+      const res = await api.api.items.$post({ json: toBody(data) })
+      if (!res.ok) return setFormError(await failed(res))
+      await afterMutation(`"${data.name.trim()}" listed successfully.`)
+    } catch {
+      setFormError('Could not reach the server.')
+    } finally {
       setBusy(false)
-      triggerNotification(`Updated "${data.name}" successfully!`, 'info')
-    }, 800)
-  }
-
-  function handleArchiveItem(itemId: string) {
-    const item = items.find((it) => it.id === itemId)
-    if (!item) return
-
-    if (
-      confirm(
-        `Are you sure you want to archive "${item.name}"? It will hide the item from new rentals.`,
-      )
-    ) {
-      setItems((prev) =>
-        prev.map((it) => (it.id === itemId ? { ...it, archivedAt: new Date().toISOString() } : it)),
-      )
-      triggerNotification(`"${item.name}" archived.`, 'info')
     }
   }
 
-  function handleBorrowRequest(itemId: string) {
-    const item = items.find((it) => it.id === itemId)
-    if (!item) return
+  async function handleEditItem(data: ItemFormData) {
+    if (!editingItem) return
+    setBusy(true)
+    setFormError(null)
+    try {
+      const res = await api.api.items[':id'].$patch({
+        param: { id: editingItem.id },
+        json: toBody(data),
+      })
+      if (!res.ok) return setFormError(await failed(res))
+      await afterMutation(`Updated "${data.name.trim()}".`, 'info')
+    } catch {
+      setFormError('Could not reach the server.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
-    // Simulate request creation
-    setItems((prev) => prev.map((it) => (it.id === itemId ? { ...it, isAvailable: false } : it)))
-    triggerNotification(`Request sent to borrow "${item.name}"! Wait for owner approval.`)
+  async function handleArchiveItem(item: Item) {
+    if (!confirm(`Archive "${item.name}"? It stops appearing in browse. Nothing is deleted.`))
+      return
+
+    try {
+      const res = await api.api.items[':id'].archive.$post({ param: { id: item.id } })
+      if (!res.ok) return announce(await failed(res), 'error')
+      await afterMutation(`"${item.name}" archived.`, 'info')
+    } catch {
+      announce('Could not reach the server.', 'error')
+    }
+  }
+
+  function handleBorrowRequest(item: Item) {
+    // M4 owns the borrow loop. Saying so is better than a button that appears
+    // to work and quietly does nothing.
+    announce(`Requesting "${item.name}" arrives with the borrow loop.`, 'info')
   }
 
   return (
     <div className="lendit-container">
-      {/* Top Banner / Heading */}
       <div
         style={{
           display: 'flex',
@@ -172,22 +154,45 @@ export function ItemsDashboard({ currentUserId, currentUserName }: ItemsDashboar
               WebkitTextFillColor: 'transparent',
             }}
           >
-            Available Materials
+            {scope === 'mine' ? 'My Items' : 'Available Materials'}
           </h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-            Find calculators, lab coats, drafting kits, and more from other students.
+            {scope === 'mine'
+              ? 'Everything you have listed, archived items included.'
+              : 'Borrow calculators, lab coats, drafting kits and more from other students. Free.'}
           </p>
         </div>
 
         {!isAdding && !editingItem && (
-          <button type="button" className="btn btn-primary" onClick={() => setIsAdding(true)}>
-            <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>+</span> Lend an Item
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
+              {(['all', 'mine'] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="btn"
+                  onClick={() => setScope(s)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.85rem',
+                    backgroundColor: scope === s ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+                    color: scope === s ? '#fff' : 'var(--text-secondary)',
+                    border: scope === s ? 'none' : '1px solid var(--border-color)',
+                  }}
+                >
+                  {s === 'all' ? 'Browse' : 'Mine'}
+                </button>
+              ))}
+            </div>
+
+            <button type="button" className="btn btn-primary" onClick={() => setIsAdding(true)}>
+              <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>+</span> Lend an Item
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Notification Toast */}
-      {notification && (
+      {notice && (
         <div
           className="glass-panel"
           style={{
@@ -196,10 +201,13 @@ export function ItemsDashboard({ currentUserId, currentUserName }: ItemsDashboar
             right: '2rem',
             padding: '1rem 1.5rem',
             borderRadius: 'var(--radius-sm)',
-            borderLeft:
-              notification.type === 'success'
-                ? '4px solid var(--success)'
-                : '4px solid var(--primary)',
+            borderLeft: `4px solid ${
+              notice.type === 'success'
+                ? 'var(--success)'
+                : notice.type === 'error'
+                  ? 'var(--danger)'
+                  : 'var(--primary)'
+            }`,
             boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
             zIndex: 100,
             display: 'flex',
@@ -208,33 +216,45 @@ export function ItemsDashboard({ currentUserId, currentUserName }: ItemsDashboar
             animation: 'fadeIn var(--transition-fast) forwards',
           }}
         >
-          <span
-            style={{
-              color: notification.type === 'success' ? 'var(--success)' : 'var(--primary)',
-              fontWeight: 'bold',
-            }}
-          >
-            {notification.type === 'success' ? '✓' : 'ℹ'}
+          <span style={{ fontWeight: 'bold' }}>
+            {notice.type === 'success' ? '✓' : notice.type === 'error' ? '!' : 'ℹ'}
           </span>
-          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{notification.text}</span>
+          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{notice.text}</span>
         </div>
       )}
 
-      {/* Main Area */}
       {isAdding ? (
-        <ItemForm onSubmit={handleCreateItem} onCancel={() => setIsAdding(false)} busy={busy} />
+        <ItemForm
+          onSubmit={handleCreateItem}
+          onCancel={() => {
+            setIsAdding(false)
+            setFormError(null)
+          }}
+          busy={busy}
+          error={formError}
+        />
       ) : editingItem ? (
         <ItemForm
           initialData={{
             name: editingItem.name,
             description: editingItem.description ?? '',
-            category: editingItem.category ?? 'Other',
-            pricePerDayCents: editingItem.pricePerDayCents,
+            category: (editingItem.category ?? 'Other') as ItemFormData['category'],
           }}
           onSubmit={handleEditItem}
-          onCancel={() => setEditingItem(null)}
+          onCancel={() => {
+            setEditingItem(null)
+            setFormError(null)
+          }}
           busy={busy}
+          error={formError}
         />
+      ) : loading ? (
+        <div
+          className="glass-panel"
+          style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}
+        >
+          <p>Loading items...</p>
+        </div>
       ) : (
         <ItemList
           items={items}

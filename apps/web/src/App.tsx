@@ -144,7 +144,7 @@ export function App() {
 
         {/* Dashboard */}
         <main style={{ flexGrow: 1 }}>
-          <ItemsDashboard currentUserId={user.id} currentUserName={user.name} />
+          <ItemsDashboard currentUserId={user.id} />
         </main>
       </div>
     )

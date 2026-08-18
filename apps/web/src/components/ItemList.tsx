@@ -1,25 +1,19 @@
+import { ITEM_CATEGORIES } from '@lendit/shared'
 import { useState } from 'react'
-
-export interface Item {
-  id: string
-  ownerId: string
-  ownerName?: string
-  name: string
-  description?: string | null
-  category?: string | null
-  pricePerDayCents: number
-  createdAt: string
-  archivedAt?: string | null
-  isAvailable?: boolean // derived: has no active loans
-}
+import type { Item } from '../api.ts'
 
 interface ItemListProps {
   items: Item[]
   currentUserId: string
-  onBorrowRequest: (itemId: string) => void
+  onBorrowRequest: (item: Item) => void
   onEdit: (item: Item) => void
-  onArchive: (itemId: string) => void
+  onArchive: (item: Item) => void
 }
+
+// Client-side only, over the page already fetched. Text search across the whole
+// catalogue is a server concern and is deferred past M7 — this must not grow
+// into it.
+const ALL = 'All'
 
 export function ItemList({
   items,
@@ -28,24 +22,17 @@ export function ItemList({
   onEdit,
   onArchive,
 }: ItemListProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  const [selectedCategory, setSelectedCategory] = useState<string>(ALL)
   const [searchQuery, setSearchQuery] = useState<string>('')
 
-  const categories = [
-    'All',
-    'Calculators',
-    'Lab Coats',
-    'Drafting Kits',
-    'Soldering Irons',
-    'Other',
-  ]
+  const query = searchQuery.trim().toLowerCase()
 
-  // Filter items
   const filteredItems = items.filter((item) => {
-    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory
+    const matchesCategory = selectedCategory === ALL || item.category === selectedCategory
     const matchesSearch =
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      !!item.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      !query ||
+      item.name.toLowerCase().includes(query) ||
+      !!item.description?.toLowerCase().includes(query)
     return matchesCategory && matchesSearch
   })
 
@@ -66,7 +53,6 @@ export function ItemList({
           justifyContent: 'space-between',
         }}
       >
-        {/* Search */}
         <div style={{ flex: '1 1 300px', display: 'flex', position: 'relative' }}>
           <input
             type="text"
@@ -78,9 +64,8 @@ export function ItemList({
           />
         </div>
 
-        {/* Categories Chips */}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {categories.map((cat) => (
+          {[ALL, ...ITEM_CATEGORIES].map((cat) => (
             <button
               type="button"
               key={cat}
@@ -102,17 +87,16 @@ export function ItemList({
         </div>
       </div>
 
-      {/* Grid Layout of Cards */}
       {filteredItems.length === 0 ? (
         <div
           className="glass-panel"
-          style={{
-            padding: '3rem 2rem',
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-          }}
+          style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--text-secondary)' }}
         >
-          <p style={{ fontSize: '1.1rem' }}>No items found matching your filters.</p>
+          <p style={{ fontSize: '1.1rem' }}>
+            {items.length === 0
+              ? 'Nothing listed yet. Be the first to lend something.'
+              : 'No items found matching your filters.'}
+          </p>
         </div>
       ) : (
         <div
@@ -124,7 +108,6 @@ export function ItemList({
         >
           {filteredItems.map((item) => {
             const isOwner = item.ownerId === currentUserId
-            const displayPrice = (item.pricePerDayCents / 100).toFixed(2)
 
             return (
               <div
@@ -137,12 +120,11 @@ export function ItemList({
                   position: 'relative',
                   borderTop: item.archivedAt
                     ? '4px solid var(--text-muted)'
-                    : item.isAvailable !== false
+                    : item.isAvailable
                       ? '4px solid var(--success)'
                       : '4px solid var(--warning)',
                 }}
               >
-                {/* Header */}
                 <div
                   style={{
                     display: 'flex',
@@ -164,16 +146,17 @@ export function ItemList({
                     {item.category ?? 'Other'}
                   </span>
 
+                  {/* Availability is computed by the server from active loans —
+                      there is no column behind this badge. */}
                   {item.archivedAt ? (
                     <span className="badge badge-archived">Archived</span>
-                  ) : item.isAvailable !== false ? (
+                  ) : item.isAvailable ? (
                     <span className="badge badge-available">Available</span>
                   ) : (
                     <span className="badge badge-borrowed">On Loan</span>
                   )}
                 </div>
 
-                {/* Name & Owner */}
                 <h3
                   style={{
                     fontSize: '1.2rem',
@@ -191,10 +174,9 @@ export function ItemList({
                     marginBottom: '0.75rem',
                   }}
                 >
-                  Lent by {isOwner ? 'you' : (item.ownerName ?? 'another student')}
+                  Lent by {isOwner ? 'you' : item.ownerName}
                 </p>
 
-                {/* Description */}
                 <p
                   style={{
                     fontSize: '0.9rem',
@@ -207,61 +189,50 @@ export function ItemList({
                   {item.description || <em>No description provided.</em>}
                 </p>
 
-                {/* Footer price & actions */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
+                    justifyContent: 'flex-end',
+                    gap: '0.5rem',
                     borderTop: '1px solid var(--border-color)',
                     paddingTop: '1rem',
                     marginTop: 'auto',
                   }}
                 >
-                  <div>
-                    <span
-                      style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)' }}
-                    >
-                      ${displayPrice}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>/ day</span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {isOwner ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => onEdit(item)}
-                          className="btn btn-secondary"
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                          disabled={!!item.archivedAt}
-                        >
-                          Edit
-                        </button>
-                        {!item.archivedAt && (
-                          <button
-                            type="button"
-                            onClick={() => onArchive(item.id)}
-                            className="btn btn-danger"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                          >
-                            Archive
-                          </button>
-                        )}
-                      </>
-                    ) : (
+                  {isOwner ? (
+                    <>
                       <button
                         type="button"
-                        onClick={() => onBorrowRequest(item.id)}
-                        className="btn btn-primary"
-                        style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
-                        disabled={item.isAvailable === false || !!item.archivedAt}
+                        onClick={() => onEdit(item)}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                        disabled={!!item.archivedAt}
                       >
-                        Request
+                        Edit
                       </button>
-                    )}
-                  </div>
+                      {!item.archivedAt && (
+                        <button
+                          type="button"
+                          onClick={() => onArchive(item)}
+                          className="btn btn-danger"
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                        >
+                          Archive
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onBorrowRequest(item)}
+                      className="btn btn-primary"
+                      style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+                      disabled={!item.isAvailable || !!item.archivedAt}
+                    >
+                      Request
+                    </button>
+                  )}
                 </div>
               </div>
             )
