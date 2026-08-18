@@ -49,7 +49,10 @@ export const items = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     category: text('category'),
-    pricePerDayCents: integer('price_per_day_cents').notNull(),
+    // Lending is free unless the owner says otherwise. The default lives in the
+    // database so a raw insert and the seed agree with the API on what "free"
+    // means, and so the column can be omitted from the wire entirely.
+    pricePerDayCents: integer('price_per_day_cents').notNull().default(0),
     createdAt: createdAt(),
     // Items are archived, never deleted — loan history has to stay readable.
     archivedAt: timestamp('archived_at', { withTimezone: true }),
