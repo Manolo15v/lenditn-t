@@ -1,54 +1,26 @@
-import { randomUUID } from 'node:crypto'
 import { db, sessions, users } from '@lendit/db'
-import { databaseIsReachable } from '@lendit/db/testing'
 import { eq, inArray, sql } from 'drizzle-orm'
-import { afterEach, describe, expect, test } from 'vitest'
-import { app } from '../app.ts'
+import { describe, expect, test } from 'vitest'
 import { SESSION_COOKIE } from '../lib/session.ts'
+import {
+  cookieFrom,
+  databaseIsReachable,
+  freshEmail,
+  json,
+  type SessionUserBody,
+  send,
+  tokenFrom,
+  useFixtures,
+} from '../testing.ts'
 
-type SessionUserBody = { id: string; name: string; email: string; createdAt: string }
+const { signup, userIds } = useFixtures()
 
-// Routes are exercised through app.request, not a listening server: same
-// middleware chain and same validators, no port to bind.
-const post = (path: string, body: unknown, cookie?: string) =>
-  app.request(path, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
-    body: JSON.stringify(body),
-  })
-
-const json = async <T>(res: Response) => (await res.json()) as T
+const post = (path: string, body: unknown, cookie?: string) => send('POST', path, body, cookie)
 
 const me = async (cookie?: string) => {
-  const res = await app.request('/api/auth/me', { headers: cookie ? { cookie } : {} })
+  const res = await send('GET', '/api/auth/me', undefined, cookie)
   return json<{ user: SessionUserBody | null }>(res)
 }
-
-const cookieFrom = (res: Response) => res.headers.get('set-cookie') ?? ''
-const tokenFrom = (res: Response) => cookieFrom(res).split(';')[0] ?? ''
-
-const freshEmail = () => `${randomUUID()}@uni.edu`
-const created: string[] = []
-
-async function signup(overrides: Partial<Record<'name' | 'email' | 'password', string>> = {}) {
-  const body = { name: 'Ana Ruiz', email: freshEmail(), password: 'correct-horse', ...overrides }
-  const res = await post('/api/auth/signup', body)
-
-  if (res.status === 201) {
-    const { user } = await json<{ user: SessionUserBody }>(res.clone())
-    created.push(user.id)
-  }
-
-  return { res, ...body }
-}
-
-afterEach(async () => {
-  const ids = created.splice(0)
-  if (!ids.length) return
-  // Sessions first: every FK in this schema is ON DELETE RESTRICT.
-  await db.delete(sessions).where(inArray(sessions.userId, ids))
-  await db.delete(users).where(inArray(users.id, ids))
-})
 
 describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
   test('signup creates an account and returns a session cookie', async () => {
@@ -65,8 +37,7 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
   })
 
   test('the session cookie survives a reload, because the server resolves it', async () => {
-    const { res } = await signup()
-    const cookie = tokenFrom(res)
+    const { cookie } = await signup()
 
     // Two independent requests carrying only the cookie: nothing in memory ties
     // them together, which is what "persists a reload" actually means.
@@ -84,13 +55,13 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
     const [row] = await db
       .select({ hash: users.passwordHash })
       .from(users)
-      .where(eq(users.id, created[0] ?? ''))
+      .where(eq(users.id, userIds[0] ?? ''))
     expect(row?.hash.startsWith('$argon2id$')).toBe(true)
   })
 
   test('the table stores a digest, not the token in the cookie', async () => {
-    const { res } = await signup()
-    const token = tokenFrom(res).split('=')[1] ?? ''
+    const { cookie } = await signup()
+    const token = cookie.split('=')[1] ?? ''
 
     // A stolen database dump must not yield a usable session.
     const [row] = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.id, token))
@@ -112,7 +83,7 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
   })
 
   test('email is trimmed and folded before it is stored', async () => {
-    const raw = `${randomUUID()}@UNI.edu`
+    const raw = freshEmail().replace('@uni.edu', '@UNI.edu')
     const { res } = await signup({ email: `  ${raw} ` })
     expect(res.status).toBe(201)
 
@@ -127,12 +98,7 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
   })
 
   test('a short password is refused by the server, not only by the form', async () => {
-    const res = await post('/api/auth/signup', {
-      name: 'Ana',
-      email: freshEmail(),
-      password: 'short',
-    })
-
+    const { res } = await signup({ password: 'short' })
     expect(res.status).toBe(400)
   })
 
@@ -164,8 +130,7 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
   })
 
   test('logout deletes the session server-side, not just the cookie', async () => {
-    const { res } = await signup()
-    const cookie = tokenFrom(res)
+    const { cookie } = await signup()
 
     const out = await post('/api/auth/logout', {}, cookie)
     expect(out.status).toBe(200)
@@ -177,7 +142,7 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
     const rows = await db
       .select({ id: sessions.id })
       .from(sessions)
-      .where(inArray(sessions.userId, created))
+      .where(inArray(sessions.userId, userIds))
     expect(rows).toHaveLength(0)
   })
 
@@ -187,13 +152,12 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
   })
 
   test('an expired session no longer resolves', async () => {
-    const { res } = await signup()
-    const cookie = tokenFrom(res)
+    const { cookie } = await signup()
 
     await db
       .update(sessions)
       .set({ expiresAt: sql`now() - interval '1 second'` })
-      .where(inArray(sessions.userId, created))
+      .where(inArray(sessions.userId, userIds))
 
     expect((await me(cookie)).user).toBeNull()
   })
