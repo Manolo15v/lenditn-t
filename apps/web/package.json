@@ -12,7 +12,8 @@
     "@lendit/shared": "workspace:*",
     "hono": "^4.13.2",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
     "@lendit/api": "workspace:*",

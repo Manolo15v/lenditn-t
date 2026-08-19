@@ -35,8 +35,6 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
   const [formError, setFormError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
 
-  // Stable so that `load` is stable, so that the effect below runs on a scope
-  // change and not on every render. Only setState calls inside, so [] is honest.
   const announce = useCallback((text: string, type: Notice['type'] = 'success') => {
     setNotice({ text, type })
     setTimeout(() => setNotice(null), 4000)
@@ -126,8 +124,6 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
   }
 
   function handleBorrowRequest(item: Item) {
-    // M4 owns the borrow loop. Saying so is better than a button that appears
-    // to work and quietly does nothing.
     announce(`Requesting "${item.name}" arrives with the borrow loop.`, 'info')
   }
 

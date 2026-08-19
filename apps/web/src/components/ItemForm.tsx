@@ -87,7 +87,6 @@ export function ItemForm({
             disabled={busy}
             style={{
               appearance: 'none',
-              backgroundImage: 'radial-gradient(circle, var(--text-muted) 10%, transparent 10%)',
             }}
           >
             {ITEM_CATEGORIES.map((cat) => (
