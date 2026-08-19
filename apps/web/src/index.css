@@ -82,6 +82,35 @@ body::after {
   pointer-events: none;
 }
 
+.login-page {
+  --bg-glass: rgba(255, 255, 255, 0.86);
+  --border-color: rgba(15, 23, 42, 0.12);
+  --text-primary: #172033;
+  --text-secondary: #526078;
+  --text-muted: #718096;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.2), transparent 32%),
+    radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.16), transparent 30%),
+    #f4f7fb;
+}
+
+.login-panel {
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 20px 60px rgba(30, 41, 59, 0.16);
+}
+
+.login-panel .form-input {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(15, 23, 42, 0.14);
+  color: var(--text-primary);
+}
+
+.login-panel .btn-secondary {
+  color: var(--text-primary);
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.62);
+}
+
 /* Main Container styling */
 .lendit-container {
   max-width: 1200px;

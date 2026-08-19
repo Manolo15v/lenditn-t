@@ -152,6 +152,7 @@ export function App() {
 
   return (
     <div
+      className="login-page"
       style={{
         display: 'flex',
         minHeight: '100vh',
@@ -161,7 +162,7 @@ export function App() {
       }}
     >
       <div
-        className="glass-panel animate-fade-in"
+        className="glass-panel login-panel animate-fade-in"
         style={{
           width: '100%',
           maxWidth: '26rem',
@@ -177,7 +178,7 @@ export function App() {
               fontSize: '2.5rem',
               fontWeight: 800,
               letterSpacing: '-0.03em',
-              background: 'linear-gradient(135deg, #fff 0%, var(--primary) 100%)',
+              background: 'linear-gradient(135deg, #172033 0%, var(--primary) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               marginBottom: '0.5rem',
