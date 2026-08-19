@@ -1,8 +1,6 @@
 import { ITEM_CATEGORIES, type ItemCategory } from '@lendit/shared'
 import { useState } from 'react'
 
-// No price field: lending is free, and the fee path is deferred. The column
-// still exists and defaults to 0, so adding the input back is additive.
 export interface ItemFormData {
   name: string
   description: string

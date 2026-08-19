@@ -32,6 +32,7 @@ export function AppRouter() {
           <Route path="/items" element={<ItemSeeker />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<ItemDashboard />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
