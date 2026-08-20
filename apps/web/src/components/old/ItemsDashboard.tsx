@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type Item } from '../api.ts'
-import { ItemForm, type ItemFormData } from './ItemForm.tsx'
+import { api, type Item } from '../../api.ts'
+import { ItemForm, type ItemFormData } from '../items/ItemForm.tsx'
 import { ItemList } from './ItemList.tsx'
 
 interface ItemsDashboardProps {
@@ -35,8 +35,6 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
   const [formError, setFormError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
 
-  // Stable so that `load` is stable, so that the effect below runs on a scope
-  // change and not on every render. Only setState calls inside, so [] is honest.
   const announce = useCallback((text: string, type: Notice['type'] = 'success') => {
     setNotice({ text, type })
     setTimeout(() => setNotice(null), 4000)
@@ -46,8 +44,6 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
     async (next: Scope) => {
       setLoading(true)
       try {
-        // ?mine=true is the owner's view and includes archived rows; plain browse
-        // hides them. Availability comes down derived either way.
         const res = await api.api.items.$get({ query: next === 'mine' ? { mine: 'true' } : {} })
         if (!res.ok) throw new Error('failed')
         setItems((await res.json()).items)
@@ -64,9 +60,6 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
     void load(scope)
   }, [load, scope])
 
-  // Every mutation re-reads the list rather than patching state locally:
-  // isAvailable is derived server-side, so a local guess would be a second,
-  // wrong definition of it.
   async function afterMutation(text: string, type: Notice['type'] = 'success') {
     setIsAdding(false)
     setEditingItem(null)
@@ -126,8 +119,6 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
   }
 
   function handleBorrowRequest(item: Item) {
-    // M4 owns the borrow loop. Saying so is better than a button that appears
-    // to work and quietly does nothing.
     announce(`Requesting "${item.name}" arrives with the borrow loop.`, 'info')
   }
 
@@ -149,7 +140,7 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
               fontSize: '2.2rem',
               fontWeight: 800,
               letterSpacing: '-0.02em',
-              background: 'linear-gradient(135deg, #fff 0%, #94a3b8 100%)',
+              background: 'linear-gradient(135deg, #2e1065 0%, #7c3aed 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}
@@ -175,7 +166,7 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
                   style={{
                     padding: '0.5rem 1rem',
                     fontSize: '0.85rem',
-                    backgroundColor: scope === s ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+                    backgroundColor: scope === s ? 'var(--primary)' : 'rgba(124, 58, 237, 0.08)',
                     color: scope === s ? '#fff' : 'var(--text-secondary)',
                     border: scope === s ? 'none' : '1px solid var(--border-color)',
                   }}
@@ -208,7 +199,7 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
                   ? 'var(--danger)'
                   : 'var(--primary)'
             }`,
-            boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+            boxShadow: '0 10px 40px rgba(124, 58, 237, 0.25)',
             zIndex: 100,
             display: 'flex',
             alignItems: 'center',

@@ -1,0 +1,10 @@
+
+> lendit@ format /home/Jonathan/programas/ujap/electiva2/lenditn-t
+> biome check --write .
+
+Skipped 4 suggested fixes.
+If you wish to apply the suggested (unsafe) fixes, use the command biome check --write --unsafe
+
+Checked 55 files in 75ms. Fixed 1 file.
+Found 11 errors.
+ ELIFECYCLE  Command failed with exit code 1.

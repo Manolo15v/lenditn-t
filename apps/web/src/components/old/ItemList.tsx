@@ -1,6 +1,6 @@
 import { ITEM_CATEGORIES } from '@lendit/shared'
 import { useState } from 'react'
-import type { Item } from '../api.ts'
+import type { Item } from '../../api.ts'
 
 interface ItemListProps {
   items: Item[]
@@ -76,7 +76,7 @@ export function ItemList({
                 fontSize: '0.85rem',
                 borderRadius: 'var(--radius-full)',
                 backgroundColor:
-                  selectedCategory === cat ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+                  selectedCategory === cat ? 'var(--primary)' : 'rgba(124, 58, 237, 0.08)',
                 color: selectedCategory === cat ? '#fff' : 'var(--text-secondary)',
                 border: selectedCategory === cat ? 'none' : '1px solid var(--border-color)',
               }}
