@@ -106,7 +106,7 @@ export const itemsRoutes = new Hono<AppEnv>()
     // carrying one is stripped rather than honoured.
     const [created] = await db
       .insert(items)
-      .values({ ...c.req.valid('json'), ownerId: user.id })
+      .values({ ...c.req.valid('json'), ownerId: user.id, pricePerDayCents: 0 }) //Arreglen el pricePerDaysCents
       .returning({ id: items.id })
     if (!created) throw new Error('insert returned no row')
 

@@ -18,6 +18,7 @@
     "seed": "tsx --env-file=../../.env src/seed.ts"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.1.0",
     "@paralleldrive/cuid2": "^3.3.0",
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.8.3",

@@ -21,5 +21,56 @@ services:
       timeout: 3s
       retries: 15
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    environment:
+      # Service name, not localhost — this container reaches postgres over the
+      # compose network, not the host loopback.
+      DATABASE_URL: postgres://lendit:lendit@postgres:5432/lendit
+      API_PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/repo
+      # Named volumes, not anonymous: an anonymous volume mounted over a
+      # directory the image already populated starts empty and hides what
+      # pnpm install just built, so tsx/vite come up MODULE_NOT_FOUND.
+      - api_node_modules:/repo/node_modules
+      - api_app_node_modules:/repo/apps/api/node_modules
+      - web_app_node_modules:/repo/apps/web/node_modules
+      - db_pkg_node_modules:/repo/packages/db/node_modules
+      - shared_pkg_node_modules:/repo/packages/shared/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.dev
+    environment:
+      WEB_PORT: 5173
+      # Vite's dev-server proxy target — the api container, not localhost.
+      API_PORT: 3000
+      API_PROXY_TARGET: http://api:3000
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/repo
+      - api_node_modules:/repo/node_modules
+      - api_app_node_modules:/repo/apps/api/node_modules
+      - web_app_node_modules:/repo/apps/web/node_modules
+      - db_pkg_node_modules:/repo/packages/db/node_modules
+      - shared_pkg_node_modules:/repo/packages/shared/node_modules
+    depends_on:
+      - api
+
 volumes:
   pg18data:
+  api_node_modules:
+  api_app_node_modules:
+  web_app_node_modules:
+  db_pkg_node_modules:
+  shared_pkg_node_modules:
