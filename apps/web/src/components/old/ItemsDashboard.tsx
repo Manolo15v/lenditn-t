@@ -60,7 +60,6 @@ export function ItemsDashboard({ currentUserId }: ItemsDashboardProps) {
     void load(scope)
   }, [load, scope])
 
-
   async function afterMutation(text: string, type: Notice['type'] = 'success') {
     setIsAdding(false)
     setEditingItem(null)
