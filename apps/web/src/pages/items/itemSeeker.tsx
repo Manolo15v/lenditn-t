@@ -1,21 +1,21 @@
+import { useCallback, useEffect, useState } from 'react'
+import { api, type Item } from '../../api'
 import { HeaderData } from '../../components/header/headerData'
 import { ItemList } from '../../components/items/itemList'
 import { cn } from '../../lib/cn'
-import { useCallback, useState, useEffect } from 'react'
-import { api, type Item } from '../../api'
 
 export function ItemSeeker() {
-    const [items, setItems] = useState<Item[]>([])
-  
+  const [items, setItems] = useState<Item[]>([])
+
   const load = useCallback(async () => {
-      try {
-        const res = await api.api.items.$get({ query: {} })
-        if (!res.ok) throw new Error('failed')
-        setItems((await res.json()).items)
-      } catch {
-      } finally {
-      }
-    }, [])
+    try {
+      const res = await api.api.items.$get({ query: {} })
+      if (!res.ok) throw new Error('failed')
+      setItems((await res.json()).items)
+    } catch {
+    } finally {
+    }
+  }, [])
 
   useEffect(() => {
     void load()
@@ -43,7 +43,6 @@ export function ItemSeeker() {
           </p>
         </section>
         <ItemList items={items} />
-
       </main>
     </div>
   )

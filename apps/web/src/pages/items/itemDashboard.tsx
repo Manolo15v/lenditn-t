@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { api, type Item } from '../../api'
 import { HeaderData } from '../../components/header/headerData'
-import { ItemList } from '../../components/items/itemList'
 import { ItemForm, type ItemFormData } from '../../components/items/ItemForm'
-import { api, type Item  } from '../../api'
+import { ItemList } from '../../components/items/itemList'
 
 type Notice = { text: string; type: 'success' | 'info' | 'error' }
 
@@ -23,33 +23,33 @@ const messages: Record<string, string> = {
 export function ItemDashboard() {
   const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [_loading, setLoading] = useState(true)
   const [items, setItems] = useState<Item[]>([])
-  const [isAdding, setIsAdding] = useState(false)
+  const [_isAdding, setIsAdding] = useState(false)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
 
   const load = useCallback(async () => {
-      setLoading(true)
-      try {
-        const res = await api.api.items.$get({ query: {mine: 'true'} })
-        if (!res.ok) throw new Error('failed')
-        setItems((await res.json()).items)
-      } catch {
-      } finally {
-        setLoading(false)
-      }
-    }, [])
+    setLoading(true)
+    try {
+      const res = await api.api.items.$get({ query: { mine: 'true' } })
+      if (!res.ok) throw new Error('failed')
+      setItems((await res.json()).items)
+    } catch {
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     void load()
   }, [load])
-  
+
   const announce = useCallback((text: string, type: Notice['type'] = 'success') => {
-      setNotice({ text, type })
-      setTimeout(() => setNotice(null), 4000)
+    setNotice({ text, type })
+    setTimeout(() => setNotice(null), 4000)
   }, [])
 
   async function failed(res: Response) {
@@ -66,7 +66,6 @@ export function ItemDashboard() {
   }
 
   async function handleCreateItem(data: ItemFormData) {
-
     try {
       setBusy(true)
       setFormError(null)
@@ -81,7 +80,7 @@ export function ItemDashboard() {
     }
   }
 
-  async function handleEditItem(data: ItemFormData) {
+  async function _handleEditItem(data: ItemFormData) {
     if (!editingItem) return
     setBusy(true)
     setFormError(null)
@@ -99,7 +98,7 @@ export function ItemDashboard() {
     }
   }
 
-  async function handleArchiveItem(item: Item) {
+  async function _handleArchiveItem(item: Item) {
     if (!confirm(`Archive "${item.name}"? It stops appearing in browse. Nothing is deleted.`))
       return
 
@@ -118,8 +117,8 @@ export function ItemDashboard() {
 
       <main className="lendit-container flex w-full flex-1 flex-col gap-8">
         <div className="flex justify-end">
-          <button className="btn btn-secondary" onClick={() => navigate('/items')}>
-           Go to community items
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/items')}>
+            Go to community items
           </button>
         </div>
 
@@ -133,7 +132,7 @@ export function ItemDashboard() {
         </section>
 
         <div className="flex justify-end">
-          <button className="btn btn-primary" onClick={() => setModalOpen(true)}>
+          <button type="button" className="btn btn-primary" onClick={() => setModalOpen(true)}>
             Add new Item
           </button>
         </div>
@@ -142,19 +141,24 @@ export function ItemDashboard() {
       </main>
 
       {modalOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: click-outside-to-close overlay; Escape is handled below and the visible close button covers keyboard use.
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={() => setModalOpen(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setModalOpen(false)}
         >
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: only stops the overlay's close-on-click from firing when the panel itself is clicked; not otherwise interactive. */}
           <div
             className="w-full max-w-md rounded-[var(--radius-md)] bg-white p-8 shadow-[var(--shadow-lg)]"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-[var(--text-primary)]">Add new Item</h2>
               <button
+                type="button"
                 className="text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
-                onClick={() => {setModalOpen(false), setIsAdding(true)}}
+                onClick={() => setModalOpen(false)}
                 aria-label="Close modal"
               >
                 <svg
@@ -165,29 +169,25 @@ export function ItemDashboard() {
                   stroke="currentColor"
                   aria-hidden="true"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18 18 6M6 6l12 12"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-              <ItemForm
-                onSubmit={handleCreateItem}
-                onCancel={() => {
+            <ItemForm
+              onSubmit={handleCreateItem}
+              onCancel={() => {
                 setIsAdding(false)
                 setFormError(null)
                 setModalOpen(false)
-                }}
-                busy={busy}
-                error={formError}
-                />
+              }}
+              busy={busy}
+              error={formError}
+            />
           </div>
         </div>
       )}
 
-       {notice && (
+      {notice && (
         <div
           className="glass-panel"
           style={{
@@ -218,6 +218,5 @@ export function ItemDashboard() {
         </div>
       )}
     </div>
-    
   )
 }

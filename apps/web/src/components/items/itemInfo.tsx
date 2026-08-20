@@ -35,7 +35,7 @@ export function ItemInfo({ item, className }: ItemInfoProps) {
       </p>
 
       {/* Margen superior añadido para separar del contenido previo */}
-      <div className='mt-8 text-center'>
+      <div className="mt-8 text-center">
         <span className={cn('badge text-sm sm:text-base whitespace-nowrap', status.classes)}>
           Status: {status.label}
         </span>
@@ -46,7 +46,8 @@ export function ItemInfo({ item, className }: ItemInfoProps) {
         <div className="mx-auto flex w-fit flex-col gap-y-5 text-left">
           <div>
             <p className="text-base font-medium text-[var(--text-secondary)] sm:text-lg">
-               Lent by <span className="font-semibold text-[var(--text-primary)]">{item.ownerName}</span>
+              Lent by{' '}
+              <span className="font-semibold text-[var(--text-primary)]">{item.ownerName}</span>
             </p>
           </div>
 
@@ -55,7 +56,7 @@ export function ItemInfo({ item, className }: ItemInfoProps) {
               dateTime={item.createdAt}
               className="block text-base font-medium text-[var(--text-secondary)] sm:text-lg"
             >
-            Listed: {dateFormatter.format(new Date(item.createdAt))}
+              Listed: {dateFormatter.format(new Date(item.createdAt))}
             </time>
           </div>
 

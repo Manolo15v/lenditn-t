@@ -1,7 +1,6 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { cn } from '../../lib/cn'
-
 
 export function HeaderData() {
   const { user, logout } = useAuth()
@@ -9,7 +8,7 @@ export function HeaderData() {
   const location = useLocation()
 
   const clickNavigate = (next: string) => {
-    if (location.pathname === next) return;
+    if (location.pathname === next) return
     navigate(next)
   }
 

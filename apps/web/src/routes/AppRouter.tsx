@@ -3,8 +3,8 @@ import { AuthProvider, useAuth } from '../context/AuthContext'
 
 //Pages
 import { ItemDashboard } from '../pages/items/itemDashboard'
-import { Login } from '../pages/login/login'
 import { ItemSeeker } from '../pages/items/itemSeeker'
+import { Login } from '../pages/login/login'
 
 function RootRedirect() {
   const { isAuthenticated, loading } = useAuth()

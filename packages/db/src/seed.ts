@@ -182,8 +182,6 @@ await db.insert(loans).values([
 ])
 
 console.log('database reset; fixtures loaded (5 users, 9 items, 6 loans)')
-console.log(
-  'test users (password: 123456): anyone on the team @ujap.com,'
-)
+console.log('test users (password: 123456): anyone on the team @ujap.com,')
 
 await pg.end()
