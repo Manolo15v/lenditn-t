@@ -8,9 +8,11 @@ export default defineConfig({
     port: Number(process.env.WEB_PORT ?? 5173),
     strictPort: true,
     // Same-origin in dev, matching the deployed shape where the API serves
-    // the built client. No CORS anywhere.
+    // the built client. No CORS anywhere. Overridable so the Docker Compose
+    // web container can reach the api container by service name instead of
+    // localhost.
     proxy: {
-      '/api': `http://localhost:${process.env.API_PORT ?? 3000}`,
+      '/api': process.env.API_PROXY_TARGET ?? `http://localhost:${process.env.API_PORT ?? 3000}`,
     },
   },
 })
