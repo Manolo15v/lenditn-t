@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type Item } from '../api.ts'
-import { ItemForm, type ItemFormData } from './items/ItemForm.tsx'
-import { ItemList } from './old/ItemList.tsx'
+import { api, type Item } from '../../api.ts'
+import { ItemForm, type ItemFormData } from '../items/ItemForm.tsx'
+import { ItemList } from './ItemList.tsx'
 
 interface ItemsDashboardProps {
   currentUserId: string
