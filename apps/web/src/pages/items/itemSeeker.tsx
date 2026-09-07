@@ -6,14 +6,21 @@ import { cn } from '../../lib/cn'
 
 export function ItemSeeker() {
   const [items, setItems] = useState<Item[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     try {
       const res = await api.api.items.$get({ query: {} })
-      if (!res.ok) throw new Error('failed')
+      if (!res.ok) throw new Error('No se pudo conectar con el servidor')
       setItems((await res.json()).items)
-    } catch {
+    } catch (err) {
+      console.error(err)
+      setError('Ocurrió un error al cargar los productos. Por favor intenta nuevamente.')
     } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -42,7 +49,41 @@ export function ItemSeeker() {
             Calculators, lab coats, drafting kits and more — lent by fellow students, free.
           </p>
         </section>
-        <ItemList items={items} />
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="size-12 animate-spin rounded-full border-4 border-[var(--primary)] border-t-transparent" />
+            <p className="mt-4 text-base font-medium text-[var(--text-secondary)]">
+              Cargando productos disponibles...
+            </p>
+            <div className="mt-8 grid w-full grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-80 animate-pulse rounded-[var(--radius-sm)] border border-[var(--primary)]/10 bg-white/60 p-8 shadow-sm"
+                >
+                  <div className="mx-auto h-6 w-3/4 rounded bg-neutral-200" />
+                  <div className="mx-auto mt-4 h-4 w-1/2 rounded bg-neutral-100" />
+                  <div className="mx-auto mt-12 h-8 w-24 rounded-full bg-neutral-100" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : error ? (
+          <div className="mx-auto w-full max-w-lg rounded-2xl border border-red-200 bg-red-50/80 p-8 text-center shadow-sm">
+            <span className="text-4xl">⚠️</span>
+            <h2 className="mt-3 text-lg font-bold text-red-900">Error al cargar datos</h2>
+            <p className="mt-1 text-sm text-red-700">{error}</p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="btn btn-primary mt-6 text-sm"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : (
+          <ItemList items={items} />
+        )}
       </main>
     </div>
   )
