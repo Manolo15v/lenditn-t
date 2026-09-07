@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { Item } from '../../api'
 import { cn } from '../../lib/cn'
 
@@ -27,7 +28,9 @@ export function ItemInfo({ item, className }: ItemInfoProps) {
       )}
     >
       <h3 className="text-center text-2xl font-bold leading-snug text-[var(--text-primary)] sm:text-3xl">
-        {item.name}
+        <Link to={`/producto/${item.id}`} className="hover:text-[var(--primary)] transition-colors">
+          {item.name}
+        </Link>
       </h3>
 
       <p className="mt-6 flex-1 text-center text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
@@ -64,6 +67,16 @@ export function ItemInfo({ item, className }: ItemInfoProps) {
             <p className="text-base font-medium text-[var(--text-secondary)] sm:text-lg">
               Category: {item.category ?? 'Other'}
             </p>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              to={`/producto/${item.id}`}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ffd814] px-4 py-2.5 text-sm font-semibold text-black shadow-sm transition-all hover:bg-[#f7ca00] active:scale-[0.98]"
+            >
+              <span>View Product Details</span>
+              <span>›</span>
+            </Link>
           </div>
         </div>
       </footer>

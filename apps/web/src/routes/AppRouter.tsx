@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext'
 //Pages
 import { ItemDashboard } from '../pages/items/itemDashboard'
 import { ItemSeeker } from '../pages/items/itemSeeker'
+import { ProductDetail } from '../pages/items/productDetail'
 import { Login } from '../pages/login/login'
 
 function RootRedirect() {
@@ -30,6 +31,10 @@ export function AppRouter() {
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
           <Route path="/items" element={<ItemSeeker />} />
+          <Route path="/items/:id" element={<ProductDetail />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/producto/:id" element={<ProductDetail />} />
+          <Route path="/productp/:id" element={<ProductDetail />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<ItemDashboard />} />

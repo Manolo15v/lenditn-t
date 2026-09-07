@@ -5,9 +5,10 @@ import { ItemInfo } from './itemInfo'
 
 interface ItemListProps {
   items: Item[]
+  className?: string
 }
 
-export function ItemList({ items }: ItemListProps) {
+export function ItemList({ items, className }: ItemListProps) {
   const [seek, setSeek] = useState('')
 
   const query = seek.trim().toLowerCase()
@@ -20,7 +21,7 @@ export function ItemList({ items }: ItemListProps) {
     return matchesSearch
   })
   return (
-    <div className="flex min-h-screen flex-col gap-y-6">
+    <div className={cn('flex min-h-screen flex-col gap-y-6', className)}>
       <div className="mx-auto w-full max-w-6xl">
         <div className="flex items-center gap-4 rounded-[var(--radius-md)] border-2 border-[var(--primary)] bg-white px-6 py-6 shadow-[var(--shadow-lg)]">
           <svg

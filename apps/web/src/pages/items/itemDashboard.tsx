@@ -23,7 +23,8 @@ const messages: Record<string, string> = {
 export function ItemDashboard() {
   const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)
-  const [_loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [_isAdding, setIsAdding] = useState(false)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
@@ -33,11 +34,13 @@ export function ItemDashboard() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const res = await api.api.items.$get({ query: { mine: 'true' } })
       if (!res.ok) throw new Error('failed')
       setItems((await res.json()).items)
     } catch {
+      setLoadError('No se pudieron cargar tus artículos. Intenta de nuevo.')
     } finally {
       setLoading(false)
     }
@@ -111,18 +114,13 @@ export function ItemDashboard() {
     }
   }
 
-  const clickFuntion = () => {
-    setModalOpen(false)
-    setIsAdding(true)
-  }
-
   return (
     <div className="flex min-h-screen flex-col">
       <HeaderData />
 
       <main className="lendit-container flex w-full flex-1 flex-col gap-8">
         <div className="flex justify-end">
-          <button className="btn btn-secondary" type="button" onClick={() => navigate('/items')}>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/items')}>
             Go to community items
           </button>
         </div>
@@ -137,40 +135,53 @@ export function ItemDashboard() {
         </section>
 
         <div className="flex justify-end">
-          <button className="btn btn-primary" type="button" onClick={() => setModalOpen(true)}>
+          <button type="button" className="btn btn-primary" onClick={() => setModalOpen(true)}>
             Add new Item
           </button>
         </div>
 
-        <ItemList items={items} />
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="size-10 animate-spin rounded-full border-4 border-[var(--primary)] border-t-transparent" />
+            <p className="mt-4 text-sm font-medium text-[var(--text-secondary)]">
+              Cargando tus artículos...
+            </p>
+          </div>
+        ) : loadError ? (
+          <div className="mx-auto w-full max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+            <p className="text-sm font-semibold text-red-900">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="btn btn-secondary mt-4 text-xs"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : (
+          <ItemList items={items} />
+        )}
       </main>
 
       {modalOpen && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: click-outside-to-close overlay; Escape is handled below and the visible close button covers keyboard use.
         <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={() => setModalOpen(false)}
-          role="dialog"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              setModalOpen(false)
-            }
-          }}
+          onKeyDown={(e) => e.key === 'Escape' && setModalOpen(false)}
         >
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: only stops the overlay's close-on-click from firing when the panel itself is clicked; not otherwise interactive. */}
           <div
             className="w-full max-w-md rounded-[var(--radius-md)] bg-white p-8 shadow-[var(--shadow-lg)]"
-            role="dialog"
             onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.stopPropagation()
-              }
-            }}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-[var(--text-primary)]">Add new Item</h2>
               <button
                 type="button"
                 className="text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
-                onClick={() => clickFuntion()}
+                onClick={() => setModalOpen(false)}
                 aria-label="Close modal"
               >
                 <svg
