@@ -1,84 +1,123 @@
+import { Archive, ArrowRight, Pencil, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Item } from '../../api'
 import { cn } from '../../lib/cn'
+import { categoryIcon, formatDate, formatPrice, itemStatus } from '../../lib/items'
 
 interface ItemInfoProps {
   item: Item
   className?: string
+  onEdit?: (item: Item) => void
+  onArchive?: (item: Item) => void
 }
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
-
-export function ItemInfo({ item, className }: ItemInfoProps) {
-  const status = item.archivedAt
-    ? { label: 'Archived', classes: 'bg-slate-500/10 text-slate-600 border-slate-500/20' }
-    : item.isAvailable
-      ? { label: 'Available', classes: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' }
-      : { label: 'On Loan', classes: 'bg-amber-500/10 text-amber-700 border-amber-500/20' }
+export function ItemInfo({ item, className, onEdit, onArchive }: ItemInfoProps) {
+  const status = itemStatus(item)
+  const Icon = categoryIcon(item.category)
+  const isArchived = Boolean(item.archivedAt)
+  const showActions = Boolean(onEdit || onArchive)
 
   return (
     <article
       className={cn(
-        'animate-fade-in group relative flex h-full flex-col',
-        'bg-white',
-        'border border-[var(--primary)]/30 rounded-[var(--radius-sm)]',
-        'shadow-[var(--shadow-md)] transition-colors hover:border-[var(--primary)] hover:shadow-[var(--shadow-lg)]',
-        'px-8 py-10 sm:px-12 sm:py-12',
+        'animate-fade-in card group flex h-full flex-col p-5 transition-colors hover:border-ink-faint',
+        isArchived && 'bg-canvas',
         className,
       )}
     >
-      <h3 className="text-center text-2xl font-bold leading-snug text-[var(--text-primary)] sm:text-3xl">
-        <Link to={`/producto/${item.id}`} className="hover:text-[var(--primary)] transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft"
+          aria-hidden="true"
+        >
+          <Icon className="size-4.5 text-accent" />
+        </span>
+        <span className={cn('chip', status.chip)}>
+          <span className={cn('size-1.5 rounded-full', status.dot)} aria-hidden="true" />
+          {status.label}
+        </span>
+      </div>
+
+      <h3 className="mt-3.5 text-sm font-semibold leading-snug text-ink">
+        <Link to={`/items/${item.id}`} className="hover:text-accent">
           {item.name}
         </Link>
       </h3>
 
-      <p className="mt-6 flex-1 text-center text-base leading-relaxed text-[var(--text-secondary)] sm:text-lg">
-        {item.description || <em>No description provided.</em>}
+      <p className="mt-1.5 line-clamp-2 flex-1 text-sm leading-relaxed text-ink-soft">
+        {item.description || 'No description provided.'}
       </p>
 
-      {/* Margen superior añadido para separar del contenido previo */}
-      <div className="mt-8 text-center">
-        <span className={cn('badge text-sm sm:text-base whitespace-nowrap', status.classes)}>
-          Status: {status.label}
+      <dl className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-soft">
+        <div className="flex items-center gap-1.5">
+          <User className="size-3.5 text-ink-faint" aria-hidden="true" />
+          <dt className="sr-only">Lender</dt>
+          <dd>{item.ownerName}</dd>
+        </div>
+        <span className="text-line" aria-hidden="true">
+          •
         </span>
-      </div>
+        <div>
+          <dt className="sr-only">Category</dt>
+          <dd>{item.category ?? 'Other'}</dd>
+        </div>
+        <span className="text-line" aria-hidden="true">
+          •
+        </span>
+        <div>
+          <dt className="sr-only">Listed</dt>
+          <dd>
+            <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
+          </dd>
+        </div>
+      </dl>
 
-      <footer className="mt-10 border-t border-[var(--border-color)] pt-8">
-        {/* Bloque alineado a la izquierda pero centrado en la tarjeta */}
-        <div className="mx-auto flex w-fit flex-col gap-y-5 text-left">
-          <div>
-            <p className="text-base font-medium text-[var(--text-secondary)] sm:text-lg">
-              Lent by{' '}
-              <span className="font-semibold text-[var(--text-primary)]">{item.ownerName}</span>
-            </p>
-          </div>
+      <footer className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-4">
+        <span className="text-sm font-semibold text-ink">{formatPrice(item.pricePerDayCents)}</span>
 
-          <div>
-            <time
-              dateTime={item.createdAt}
-              className="block text-base font-medium text-[var(--text-secondary)] sm:text-lg"
-            >
-              Listed: {dateFormatter.format(new Date(item.createdAt))}
-            </time>
-          </div>
-
-          <div>
-            <p className="text-base font-medium text-[var(--text-secondary)] sm:text-lg">
-              Category: {item.category ?? 'Other'}
-            </p>
-          </div>
-
-          <div className="pt-2">
-            <Link
-              to={`/producto/${item.id}`}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#ffd814] px-4 py-2.5 text-sm font-semibold text-black shadow-sm transition-all hover:bg-[#f7ca00] active:scale-[0.98]"
-            >
-              <span>View Product Details</span>
-              <span>›</span>
+        {showActions ? (
+          <div className="flex items-center gap-1">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(item)}
+                disabled={isArchived}
+                title={isArchived ? 'Archived items cannot be edited' : 'Edit item'}
+                className="btn-ghost p-2 disabled:opacity-40"
+              >
+                <Pencil className="size-4" aria-hidden="true" />
+                <span className="sr-only">Edit {item.name}</span>
+              </button>
+            )}
+            {onArchive && !isArchived && (
+              <button
+                type="button"
+                onClick={() => onArchive(item)}
+                title="Archive item"
+                className="btn-ghost p-2 hover:text-red-600"
+              >
+                <Archive className="size-4" aria-hidden="true" />
+                <span className="sr-only">Archive {item.name}</span>
+              </button>
+            )}
+            <Link to={`/items/${item.id}`} className="btn-ghost p-2">
+              <ArrowRight className="size-4" aria-hidden="true" />
+              <span className="sr-only">View {item.name}</span>
             </Link>
           </div>
-        </div>
+        ) : (
+          <Link
+            to={`/items/${item.id}`}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-accent
+              hover:text-accent-hover"
+          >
+            View details
+            <ArrowRight
+              className="size-3.5 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </Link>
+        )}
       </footer>
     </article>
   )

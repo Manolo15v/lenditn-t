@@ -1,17 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import type { ItemCategory } from '@lendit/shared'
+import { Archive, Loader2, PackagePlus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type Item } from '../../api'
 import { HeaderData } from '../../components/header/headerData'
 import { ItemForm, type ItemFormData } from '../../components/items/ItemForm'
 import { ItemList } from '../../components/items/itemList'
+import { Modal } from '../../components/ui/Modal'
+import { CardSkeleton, ErrorState } from '../../components/ui/States'
+import { Toast, type ToastMessage } from '../../components/ui/Toast'
 
-type Notice = { text: string; type: 'success' | 'info' | 'error' }
-
-const toBody = (data: ItemFormData) => ({
-  name: data.name.trim(),
-  description: data.description.trim() || null,
-  category: data.category,
-})
+// Dollars in the form, cents on the wire. Math.round keeps 0.07 from arriving
+// as 6 cents, and a blank or unparseable field means a free loan.
+const toBody = (data: ItemFormData) => {
+  const dollars = Number.parseFloat(data.pricePerDay)
+  return {
+    name: data.name.trim(),
+    description: data.description.trim() || null,
+    category: data.category,
+    pricePerDayCents: Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : 0,
+  }
+}
 
 const messages: Record<string, string> = {
   not_owner: 'That item belongs to someone else.',
@@ -20,27 +28,32 @@ const messages: Record<string, string> = {
   unauthenticated: 'Your session expired. Sign in again.',
 }
 
+async function errorFrom(res: Response) {
+  const body = (await res.json().catch(() => ({}))) as { error?: string }
+  return messages[body.error ?? ''] ?? 'Something went wrong. Please try again.'
+}
+
 export function ItemDashboard() {
-  const navigate = useNavigate()
-  const [modalOpen, setModalOpen] = useState(false)
+  const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [items, setItems] = useState<Item[]>([])
-  const [_isAdding, setIsAdding] = useState(false)
-  const [editingItem, setEditingItem] = useState<Item | null>(null)
+
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<Item | null>(null)
+  const [archiving, setArchiving] = useState<Item | null>(null)
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<Notice | null>(null)
+  const [toast, setToast] = useState<ToastMessage | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
     try {
       const res = await api.api.items.$get({ query: { mine: 'true' } })
-      if (!res.ok) throw new Error('failed')
+      if (!res.ok) throw new Error('request failed')
       setItems((await res.json()).items)
     } catch {
-      setLoadError('No se pudieron cargar tus artículos. Intenta de nuevo.')
+      setLoadError('We could not load your items. Check your connection and try again.')
     } finally {
       setLoading(false)
     }
@@ -50,50 +63,49 @@ export function ItemDashboard() {
     void load()
   }, [load])
 
-  const announce = useCallback((text: string, type: Notice['type'] = 'success') => {
-    setNotice({ text, type })
-    setTimeout(() => setNotice(null), 4000)
+  const announce = useCallback((text: string, kind: ToastMessage['kind'] = 'success') => {
+    setToast({ text, kind })
   }, [])
 
-  async function failed(res: Response) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string }
-    return messages[body.error ?? ''] ?? 'Something went wrong.'
-  }
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(timer)
+  }, [toast])
 
-  async function afterMutation(text: string, type: Notice['type'] = 'success') {
-    setIsAdding(false)
-    setEditingItem(null)
-    setFormError(null)
-    await load()
-    announce(text, type)
-  }
-
-  async function handleCreateItem(data: ItemFormData) {
-    try {
-      setBusy(true)
-      setFormError(null)
-      setModalOpen(false)
-      const res = await api.api.items.$post({ json: toBody(data) })
-      if (!res.ok) return setFormError(await failed(res))
-      await afterMutation(`"${data.name.trim()}" listed successfully.`)
-    } catch {
-      setFormError('Could not reach the server.')
-    } finally {
-      setBusy(false)
+  const stats = useMemo(() => {
+    const active = items.filter((i) => !i.archivedAt)
+    return {
+      total: active.length,
+      available: active.filter((i) => i.isAvailable).length,
+      onLoan: active.filter((i) => !i.isAvailable).length,
+      archived: items.length - active.length,
     }
+  }, [items])
+
+  function closeForm() {
+    setFormOpen(false)
+    setEditing(null)
+    setFormError(null)
   }
 
-  async function _handleEditItem(data: ItemFormData) {
-    if (!editingItem) return
+  async function handleSubmit(data: ItemFormData) {
     setBusy(true)
     setFormError(null)
     try {
-      const res = await api.api.items[':id'].$patch({
-        param: { id: editingItem.id },
-        json: toBody(data),
-      })
-      if (!res.ok) return setFormError(await failed(res))
-      await afterMutation(`Updated "${data.name.trim()}".`, 'info')
+      const res = editing
+        ? await api.api.items[':id'].$patch({ param: { id: editing.id }, json: toBody(data) })
+        : await api.api.items.$post({ json: toBody(data) })
+
+      if (!res.ok) {
+        setFormError(await errorFrom(res))
+        return
+      }
+
+      const label = data.name.trim()
+      closeForm()
+      await load()
+      announce(editing ? `Updated "${label}".` : `"${label}" is now listed.`, 'success')
     } catch {
       setFormError('Could not reach the server.')
     } finally {
@@ -101,16 +113,23 @@ export function ItemDashboard() {
     }
   }
 
-  async function _handleArchiveItem(item: Item) {
-    if (!confirm(`Archive "${item.name}"? It stops appearing in browse. Nothing is deleted.`))
-      return
-
+  async function handleArchive() {
+    if (!archiving) return
+    setBusy(true)
     try {
-      const res = await api.api.items[':id'].archive.$post({ param: { id: item.id } })
-      if (!res.ok) return announce(await failed(res), 'error')
-      await afterMutation(`"${item.name}" archived.`, 'info')
+      const res = await api.api.items[':id'].archive.$post({ param: { id: archiving.id } })
+      if (!res.ok) {
+        announce(await errorFrom(res), 'error')
+        return
+      }
+      const label = archiving.name
+      setArchiving(null)
+      await load()
+      announce(`"${label}" archived.`, 'info')
     } catch {
       announce('Could not reach the server.', 'error')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -118,128 +137,146 @@ export function ItemDashboard() {
     <div className="flex min-h-screen flex-col">
       <HeaderData />
 
-      <main className="lendit-container flex w-full flex-1 flex-col gap-8">
-        <div className="flex justify-end">
-          <button type="button" className="btn btn-secondary" onClick={() => navigate('/items')}>
-            Go to community items
-          </button>
-        </div>
-
-        <section className="flex flex-col items-center gap-3 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)] sm:text-4xl">
-            Dashboard
-          </h1>
-          <p className="text-sm text-[var(--text-secondary)] sm:text-base">
-            Add new items to lend or edit existing ones.
-          </p>
-        </section>
-
-        <div className="flex justify-end">
-          <button type="button" className="btn btn-primary" onClick={() => setModalOpen(true)}>
-            Add new Item
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="size-10 animate-spin rounded-full border-4 border-[var(--primary)] border-t-transparent" />
-            <p className="mt-4 text-sm font-medium text-[var(--text-secondary)]">
-              Cargando tus artículos...
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">My items</h1>
+            <p className="mt-2 text-sm text-ink-soft">
+              List new items to lend, edit details, or archive what you no longer share.
             </p>
           </div>
-        ) : loadError ? (
-          <div className="mx-auto w-full max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-sm font-semibold text-red-900">{loadError}</p>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="btn btn-secondary mt-4 text-xs"
-            >
-              Reintentar
-            </button>
-          </div>
-        ) : (
-          <ItemList items={items} />
+          <button
+            type="button"
+            className="btn-accent"
+            onClick={() => {
+              setEditing(null)
+              setFormError(null)
+              setFormOpen(true)
+            }}
+          >
+            <PackagePlus className="size-4" aria-hidden="true" />
+            List an item
+          </button>
+        </div>
+
+        {!loading && !loadError && items.length > 0 && (
+          <dl className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Stat label="Listed" value={stats.total} />
+            <Stat label="Available" value={stats.available} />
+            <Stat label="On loan" value={stats.onLoan} />
+            <Stat label="Archived" value={stats.archived} />
+          </dl>
         )}
+
+        <div className="mt-8">
+          {loading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : loadError ? (
+            <ErrorState
+              title="Could not load your items"
+              message={loadError}
+              onRetry={() => void load()}
+            />
+          ) : (
+            <ItemList
+              items={items}
+              emptyAction={
+                <button type="button" className="btn-accent" onClick={() => setFormOpen(true)}>
+                  <PackagePlus className="size-4" aria-hidden="true" />
+                  List an item
+                </button>
+              }
+              onEdit={(item) => {
+                setEditing(item)
+                setFormError(null)
+                setFormOpen(true)
+              }}
+              onArchive={(item) => setArchiving(item)}
+            />
+          )}
+        </div>
       </main>
 
-      {modalOpen && (
-        // biome-ignore lint/a11y/noStaticElementInteractions: click-outside-to-close overlay; Escape is handled below and the visible close button covers keyboard use.
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setModalOpen(false)}
-          onKeyDown={(e) => e.key === 'Escape' && setModalOpen(false)}
-        >
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: only stops the overlay's close-on-click from firing when the panel itself is clicked; not otherwise interactive. */}
-          <div
-            className="w-full max-w-md rounded-[var(--radius-md)] bg-white p-8 shadow-[var(--shadow-lg)]"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">Add new Item</h2>
-              <button
-                type="button"
-                className="text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)]"
-                onClick={() => setModalOpen(false)}
-                aria-label="Close modal"
-              >
-                <svg
-                  className="size-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <ItemForm
-              onSubmit={handleCreateItem}
-              onCancel={() => {
-                setIsAdding(false)
-                setFormError(null)
-                setModalOpen(false)
-              }}
-              busy={busy}
-              error={formError}
-            />
-          </div>
-        </div>
-      )}
+      <Modal
+        open={formOpen}
+        title={editing ? 'Edit item' : 'List an item'}
+        description={
+          editing ? 'Changes are visible to borrowers right away.' : 'All loans are free to borrow.'
+        }
+        onClose={closeForm}
+      >
+        <ItemForm
+          // Remounts on target change so the fields reflect the item being edited.
+          key={editing?.id ?? 'new'}
+          initialData={
+            editing
+              ? {
+                  name: editing.name,
+                  description: editing.description ?? '',
+                  category: (editing.category ?? 'Other') as ItemCategory,
+                  pricePerDay:
+                    editing.pricePerDayCents === 0
+                      ? ''
+                      : (editing.pricePerDayCents / 100).toFixed(2),
+                }
+              : undefined
+          }
+          onSubmit={handleSubmit}
+          onCancel={closeForm}
+          busy={busy}
+          error={formError}
+        />
+      </Modal>
 
-      {notice && (
-        <div
-          className="glass-panel"
-          style={{
-            position: 'fixed',
-            bottom: '2rem',
-            right: '2rem',
-            padding: '1rem 1.5rem',
-            borderRadius: 'var(--radius-sm)',
-            borderLeft: `4px solid ${
-              notice.type === 'success'
-                ? 'var(--success)'
-                : notice.type === 'error'
-                  ? 'var(--danger)'
-                  : 'var(--primary)'
-            }`,
-            boxShadow: '0 10px 40px rgba(124, 58, 237, 0.25)',
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            animation: 'fadeIn var(--transition-fast) forwards',
-          }}
-        >
-          <span style={{ fontWeight: 'bold' }}>
-            {notice.type === 'success' ? '✓' : notice.type === 'error' ? '!' : 'ℹ'}
-          </span>
-          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{notice.text}</span>
+      <Modal
+        open={archiving !== null}
+        title="Archive this item?"
+        onClose={() => setArchiving(null)}
+      >
+        <p className="text-sm leading-relaxed text-ink-soft">
+          <span className="font-medium text-ink">{archiving?.name}</span> stops appearing in browse.
+          Nothing is deleted, and any open loan stays as it is.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => setArchiving(null)}
+            disabled={busy}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-danger"
+            onClick={() => void handleArchive()}
+            disabled={busy}
+            aria-busy={busy}
+          >
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Archive className="size-4" aria-hidden="true" />
+            )}
+            Archive
+          </button>
         </div>
-      )}
+      </Modal>
+
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
+    </div>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="card px-4 py-3">
+      <dt className="text-xs text-ink-soft">{label}</dt>
+      <dd className="mt-0.5 text-xl font-semibold tabular-nums text-ink">{value}</dd>
     </div>
   )
 }
