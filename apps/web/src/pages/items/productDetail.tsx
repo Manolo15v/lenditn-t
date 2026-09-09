@@ -303,7 +303,7 @@ export function ProductDetail() {
                   <p className="text-xs font-medium text-ink-soft">You own this item</p>
                   <button
                     type="button"
-                    className="btn-secondary w-full"
+                    className="btn-outline w-full"
                     onClick={() => {
                       setFormError(null)
                       setEditOpen(true)
@@ -317,7 +317,7 @@ export function ProductDetail() {
                   {!isArchived && (
                     <button
                       type="button"
-                      className="btn-danger w-full"
+                      className="btn-quiet-danger w-full"
                       onClick={() => setArchiveOpen(true)}
                     >
                       <Archive className="size-4" aria-hidden="true" />
@@ -410,7 +410,7 @@ export function ProductDetail() {
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            className="btn-secondary"
+            className="btn-outline"
             onClick={() => setArchiveOpen(false)}
             disabled={busy}
           >
@@ -418,7 +418,7 @@ export function ProductDetail() {
           </button>
           <button
             type="button"
-            className="btn-danger"
+            className="btn-quiet-danger"
             onClick={() => void handleArchive()}
             disabled={busy}
             aria-busy={busy}

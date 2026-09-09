@@ -1,9 +1,289 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+:root {
+  --font-sans: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
+  /* White / Purple Color Palette */
+  --bg-primary: #f6f4fb;
+  --bg-secondary: #f6f4ff;
+  --bg-tertiary: #ede9fe;
+  --bg-glass: rgba(255, 255, 255, 0.96);
+  --bg-glass-hover: #ffffff;
+
+  --border-color: rgba(124, 58, 237, 0.2);
+  --border-color-hover: rgba(124, 58, 237, 0.45);
+
+  --text-primary: #2e1065;
+  --text-secondary: #4c1d95;
+  --text-muted: #7c5cbf;
+
+  --primary: #7c3aed; /* Purple */
+  --primary-hover: #6d28d9;
+  --primary-glow: rgba(124, 58, 237, 0.22);
+
+  --success: #059669; /* Emerald */
+  --success-glow: rgba(5, 150, 105, 0.15);
+  --danger: #dc2626; /* Rose */
+  --danger-glow: rgba(220, 38, 38, 0.15);
+  --warning: #d97706; /* Amber */
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 2px 8px rgba(124, 58, 237, 0.1);
+  --shadow-md: 0 8px 30px rgba(124, 58, 237, 0.18);
+  --shadow-lg: 0 20px 50px rgba(124, 58, 237, 0.25);
+
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Background Gradients */
+body::before {
+  content: "";
+  position: fixed;
+  top: -10%;
+  left: -10%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  bottom: -10%;
+  right: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.08) 0%, transparent 70%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.login-page {
+  --bg-glass: rgba(255, 255, 255, 0.96);
+  --border-color: rgba(124, 58, 237, 0.18);
+  --text-primary: #2e1065;
+  --text-secondary: #4c1d95;
+  --text-muted: #7c5cbf;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(124, 58, 237, 0.16), transparent 32%),
+    radial-gradient(circle at 85% 85%, rgba(124, 58, 237, 0.12), transparent 30%), #f6f4fb;
+}
+
+.login-panel {
+  border-color: rgba(124, 58, 237, 0.12);
+  box-shadow: 0 20px 60px rgba(124, 58, 237, 0.18);
+}
+
+/* Main Container styling */
+.lendit-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* Glass Card class */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+.glass-panel:hover {
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+/* Dynamic Buttons */
+.btn {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--primary-glow);
+  filter: brightness(1.1);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: rgba(124, 58, 237, 0.08);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(124, 58, 237, 0.14);
+  border-color: rgba(124, 58, 237, 0.3);
+}
+
+.login-panel .btn-secondary {
+  color: var(--text-primary);
+  border-color: rgba(124, 58, 237, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--danger-glow);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Typography & Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-available {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge-borrowed {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge-archived {
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--text-muted);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+/* Inputs & Form Elements */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.form-input {
+  background: rgba(124, 58, 237, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.form-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.login-panel .form-input {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(124, 58, 237, 0.16);
+  color: var(--text-primary);
+}
+
+/* Micro-animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) forwards;
+}
+
+/* ---------------------------------------------------------------------------
+   Scoped design tokens for the redesigned surfaces (product detail, dashboard
+   and the item cards). Everything above is the original theme and still drives
+   login, browse and the header untouched.
+   --------------------------------------------------------------------------- */
+
+@theme {
   --color-ink: #18181b;
   --color-ink-soft: #52525b;
   --color-ink-faint: #a1a1aa;
@@ -19,48 +299,19 @@
   --color-accent-soft: #f5f3ff;
 }
 
-:root {
-  color-scheme: light;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background-color: var(--color-canvas);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-feature-settings: "cv11", "ss01";
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
 @layer components {
-  /* Shared primitives. Everything visual beyond these lives in utilities on the
-     element, so a component's appearance is readable where it is used.
-
-     The shared button base is a selector list rather than `@apply btn`:
+  /* The shared button base is a selector list rather than `@apply btn-base`:
      Tailwind v4 only applies real utilities, so composing one component class
      into another fails the build. */
-  .btn,
-  .btn-primary,
+  .btn-ink,
   .btn-accent,
-  .btn-secondary,
+  .btn-outline,
   .btn-ghost,
-  .btn-danger {
+  .btn-quiet-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  .btn-primary {
+  .btn-ink {
     @apply bg-ink px-4 py-2.5 text-white hover:bg-ink-soft;
   }
 
@@ -68,7 +319,7 @@ body {
     @apply bg-accent px-4 py-2.5 text-white hover:bg-accent-hover;
   }
 
-  .btn-secondary {
+  .btn-outline {
     @apply border border-line bg-surface px-4 py-2.5 text-ink hover:bg-line-soft;
   }
 
@@ -76,7 +327,7 @@ body {
     @apply px-3 py-2 text-ink-soft hover:bg-line-soft hover:text-ink;
   }
 
-  .btn-danger {
+  .btn-quiet-danger {
     @apply border border-red-200 bg-white px-4 py-2.5 text-red-600 hover:bg-red-50;
   }
 
@@ -95,19 +346,4 @@ body {
   .chip {
     @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
   }
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out both;
 }

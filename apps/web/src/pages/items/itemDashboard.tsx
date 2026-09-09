@@ -244,7 +244,7 @@ export function ItemDashboard() {
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            className="btn-secondary"
+            className="btn-outline"
             onClick={() => setArchiving(null)}
             disabled={busy}
           >
@@ -252,7 +252,7 @@ export function ItemDashboard() {
           </button>
           <button
             type="button"
-            className="btn-danger"
+            className="btn-quiet-danger"
             onClick={() => void handleArchive()}
             disabled={busy}
             aria-busy={busy}

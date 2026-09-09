@@ -30,7 +30,7 @@ export function ErrorState({
       <h2 className="mt-3 text-sm font-semibold text-ink">{title}</h2>
       <p className="mt-1 text-sm text-ink-soft">{message}</p>
       {onRetry && (
-        <button type="button" onClick={onRetry} className="btn-secondary mt-5">
+        <button type="button" onClick={onRetry} className="btn-outline mt-5">
           <RotateCcw className="size-4" aria-hidden="true" />
           Try again
         </button>

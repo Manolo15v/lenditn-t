@@ -1,4 +1,3 @@
-import { CircleAlert, Loader2, Package } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -27,28 +26,55 @@ export function Login() {
     const err =
       mode === 'signup' ? await signup(name, email, password) : await login(email, password)
 
-    if (err) setError(err)
-    else navigate('/items', { replace: true })
+    if (err) {
+      setError(err)
+    } else {
+      navigate('/items', { replace: true })
+    }
 
     setBusy(false)
   }
 
-  const isSignup = mode === 'signup'
-
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="animate-fade-in w-full max-w-sm">
-        <div className="flex flex-col items-center text-center">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-ink">
-            <Package className="size-5 text-white" aria-hidden="true" />
-          </span>
-          <h1 className="mt-4 text-xl font-semibold tracking-tight text-ink">
-            {isSignup ? 'Create your account' : 'Welcome back'}
+    <div
+      className="login-page"
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem 1rem',
+      }}
+    >
+      <div
+        className="glass-panel login-panel animate-fade-in"
+        style={{
+          width: '100%',
+          maxWidth: '26rem',
+          padding: '2.5rem 2rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <h1
+            style={{
+              fontSize: '2.5rem',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              background: 'linear-gradient(135deg, #172033 0%, var(--primary) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '0.5rem',
+            }}
+          >
+            Lendit
           </h1>
-          <p className="mt-1.5 text-sm text-ink-soft">
-            {isSignup
-              ? 'Join the campus lending community.'
-              : 'Sign in to browse and lend equipment.'}
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+            {mode === 'signup'
+              ? 'Create an account to start lending'
+              : 'Sign in to access student materials'}
           </p>
         </div>
 
@@ -57,35 +83,35 @@ export function Login() {
             event.preventDefault()
             void submit(new FormData(event.currentTarget))
           }}
-          className="card mt-6 flex flex-col gap-4 p-6"
+          style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
         >
-          {isSignup && (
-            <div>
-              <label htmlFor="name" className="label">
-                Full name
+          {mode === 'signup' && (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label htmlFor="name" className="form-label">
+                Full Name
               </label>
               <input
                 id="name"
                 name="name"
-                className="field"
+                className="form-input"
                 required
                 maxLength={80}
                 autoComplete="name"
-                placeholder="Manuel Velazco"
+                placeholder="e.g. Manuel Velazco"
                 disabled={busy}
               />
             </div>
           )}
 
-          <div>
-            <label htmlFor="email" className="label">
-              Email
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="email" className="form-label">
+              Email Address
             </label>
             <input
               id="email"
               name="email"
               type="email"
-              className="field"
+              className="form-input"
               required
               autoComplete="email"
               placeholder="name@university.edu"
@@ -93,57 +119,71 @@ export function Login() {
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="label">
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="password" className="form-label">
               Password
             </label>
             <input
               id="password"
               name="password"
               type="password"
-              className="field"
+              className="form-input"
               required
-              minLength={isSignup ? 8 : undefined}
-              autoComplete={isSignup ? 'new-password' : 'current-password'}
+              minLength={mode === 'signup' ? 8 : undefined}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               placeholder="••••••••"
               disabled={busy}
             />
-            {isSignup && (
-              <p className="mt-1.5 text-[11px] text-ink-faint">At least 8 characters.</p>
-            )}
           </div>
 
           {error && (
             <p
               role="alert"
-              className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3
-                py-2 text-sm text-red-700"
+              style={{
+                fontSize: '0.85rem',
+                color: 'var(--danger)',
+                background: 'rgba(239, 68, 68, 0.1)',
+                padding: '0.5rem 0.75rem',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                textAlign: 'center',
+                margin: '0.5rem 0',
+              }}
             >
-              <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               {error}
             </p>
           )}
 
-          <button type="submit" className="btn-accent w-full" disabled={busy} aria-busy={busy}>
-            {busy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-            {busy ? 'Please wait' : isSignup ? 'Create account' : 'Sign in'}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={busy}
+            style={{ width: '100%', marginTop: '0.5rem' }}
+          >
+            {busy ? 'Processing...' : mode === 'signup' ? 'Create Account' : 'Sign In'}
           </button>
         </form>
 
-        <p className="mt-5 text-center text-sm text-ink-soft">
-          {isSignup ? 'Already have an account?' : 'Need an account?'}{' '}
+        <div
+          style={{
+            textAlign: 'center',
+            borderTop: '1px solid var(--border-color)',
+            paddingTop: '1.25rem',
+          }}
+        >
           <button
             type="button"
-            className="font-medium text-accent hover:text-accent-hover hover:underline"
+            className="btn btn-secondary"
+            style={{ width: '100%', fontSize: '0.9rem' }}
             onClick={() => {
-              setMode(isSignup ? 'login' : 'signup')
+              setMode(mode === 'login' ? 'signup' : 'login')
               setError(null)
             }}
             disabled={busy}
           >
-            {isSignup ? 'Sign in' : 'Sign up'}
+            {mode === 'login' ? 'Need a new account? Sign up' : 'Already have an account? Sign in'}
           </button>
-        </p>
+        </div>
       </div>
     </div>
   )

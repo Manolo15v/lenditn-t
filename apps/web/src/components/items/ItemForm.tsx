@@ -153,7 +153,7 @@ export function ItemForm({
       )}
 
       <div className="flex justify-end gap-2 pt-1">
-        <button type="button" className="btn-secondary" onClick={onCancel} disabled={busy}>
+        <button type="button" className="btn-outline" onClick={onCancel} disabled={busy}>
           Cancel
         </button>
         <button
