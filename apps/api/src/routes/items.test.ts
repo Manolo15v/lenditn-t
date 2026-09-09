@@ -45,6 +45,17 @@ describe.skipIf(!(await databaseIsReachable()))('item routes', () => {
 
     // Browsing, though, is public — an unauthenticated visitor sees the catalogue.
     expect((await send('GET', '/api/items')).status).toBe(200)
+
+    // Reading a single item is also public
+    const read = await send('GET', `/api/items/${created.id}`)
+    expect(read.status).toBe(200)
+    const readBody = await json<{ item: ItemBody }>(read)
+    expect(readBody.item.id).toBe(created.id)
+    expect(readBody.item.name).toBe(created.name)
+
+    // Missing item returns 404
+    const notFound = await send('GET', '/api/items/non-existent-id')
+    expect(notFound.status).toBe(404)
   })
 
   test('editing someone else’s item is a 403, and a missing one is a 404', async () => {

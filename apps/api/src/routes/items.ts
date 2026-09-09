@@ -99,6 +99,13 @@ export const itemsRoutes = new Hono<AppEnv>()
     return c.json({ items: rows.map(publicItem) })
   })
 
+  .get('/:id', async (c) => {
+    const id = c.req.param('id')
+    const row = await readItem(id)
+    if (!row) return c.json({ error: 'not_found' } as const, 404)
+    return c.json({ item: publicItem(row) })
+  })
+
   .post('/', requireUser, zValidator('json', createInput), async (c) => {
     const user = currentUser(c)
 
@@ -106,7 +113,7 @@ export const itemsRoutes = new Hono<AppEnv>()
     // carrying one is stripped rather than honoured.
     const [created] = await db
       .insert(items)
-      .values({ ...c.req.valid('json'), ownerId: user.id })
+      .values({ ...c.req.valid('json'), ownerId: user.id, pricePerDayCents: 0 }) //Arreglen el pricePerDaysCents
       .returning({ id: items.id })
     if (!created) throw new Error('insert returned no row')
 
