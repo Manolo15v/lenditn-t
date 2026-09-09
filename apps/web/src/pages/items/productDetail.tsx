@@ -221,13 +221,13 @@ export function ProductDetail() {
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
             <div className="card overflow-hidden">
-              <div className="flex items-center justify-center border-b border-line bg-canvas py-14">
+              <div className="flex items-center justify-center border-b border-line bg-canvas py-9">
                 <span
-                  className="flex size-24 items-center justify-center rounded-2xl bg-surface
+                  className="flex size-16 items-center justify-center rounded-xl bg-surface
                     ring-1 ring-line"
                   aria-hidden="true"
                 >
-                  <Icon className="size-10 text-accent" strokeWidth={1.5} />
+                  <Icon className="size-7 text-accent" strokeWidth={1.5} />
                 </span>
               </div>
 

@@ -42,10 +42,15 @@
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Inside `base` so Tailwind's layer order applies: an unlayered `*` rule sits
+   after the component layer in the output and its padding:0 wins on equal
+   specificity, which silently flattens every .card / .field / .chip. */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 body {
