@@ -42,10 +42,15 @@
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Inside `base` so Tailwind's layer order applies: an unlayered `*` rule sits
+   after the component layer in the output and its padding:0 wins on equal
+   specificity, which silently flattens every .card / .field / .chip. */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 body {
@@ -275,4 +280,75 @@ body::after {
 
 .animate-fade-in {
   animation: fadeIn var(--transition-normal) forwards;
+}
+
+/* ---------------------------------------------------------------------------
+   Scoped design tokens for the redesigned surfaces (product detail, dashboard
+   and the item cards). Everything above is the original theme and still drives
+   login, browse and the header untouched.
+   --------------------------------------------------------------------------- */
+
+@theme {
+  --color-ink: #18181b;
+  --color-ink-soft: #52525b;
+  --color-ink-faint: #a1a1aa;
+
+  --color-line: #e4e4e7;
+  --color-line-soft: #f4f4f5;
+
+  --color-surface: #ffffff;
+  --color-canvas: #fafafa;
+
+  --color-accent: #6d28d9;
+  --color-accent-hover: #5b21b6;
+  --color-accent-soft: #f5f3ff;
+}
+
+@layer components {
+  /* The shared button base is a selector list rather than `@apply btn-base`:
+     Tailwind v4 only applies real utilities, so composing one component class
+     into another fails the build. */
+  .btn-ink,
+  .btn-accent,
+  .btn-outline,
+  .btn-ghost,
+  .btn-quiet-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ink {
+    @apply bg-ink px-4 py-2.5 text-white hover:bg-ink-soft;
+  }
+
+  .btn-accent {
+    @apply bg-accent px-4 py-2.5 text-white hover:bg-accent-hover;
+  }
+
+  .btn-outline {
+    @apply border border-line bg-surface px-4 py-2.5 text-ink hover:bg-line-soft;
+  }
+
+  .btn-ghost {
+    @apply px-3 py-2 text-ink-soft hover:bg-line-soft hover:text-ink;
+  }
+
+  .btn-quiet-danger {
+    @apply border border-red-200 bg-white px-4 py-2.5 text-red-600 hover:bg-red-50;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm text-ink transition-colors placeholder:text-ink-faint focus:border-accent focus:outline-none disabled:bg-line-soft disabled:text-ink-faint;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-medium text-ink-soft;
+  }
+
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium;
+  }
 }

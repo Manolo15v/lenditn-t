@@ -111,9 +111,14 @@ export const itemsRoutes = new Hono<AppEnv>()
 
     // ownerId comes from the session. createInput has no such field, so a body
     // carrying one is stripped rather than honoured.
+    //
+    // pricePerDayCents is passed through from the validated body: it is optional
+    // there, and the column defaults to 0, so omitting it still means a free
+    // loan. Forcing 0 here made every listing free regardless of what the owner
+    // set, including the seeded fixtures.
     const [created] = await db
       .insert(items)
-      .values({ ...c.req.valid('json'), ownerId: user.id, pricePerDayCents: 0 }) //Arreglen el pricePerDaysCents
+      .values({ ...c.req.valid('json'), ownerId: user.id })
       .returning({ id: items.id })
     if (!created) throw new Error('insert returned no row')
 
