@@ -12,7 +12,7 @@ thing, when is it coming back, and did they pay.
 |---|---|---|
 | Node | 22+ | `--env-file` and native TS-adjacent tooling |
 | pnpm | 10+ | workspaces; the version is pinned in `packageManager` |
-| Docker | any | runs Postgres only — OrbStack, Docker Desktop, or Colima all work |
+| Docker | any | runs Postgres and Valkey — OrbStack, Docker Desktop, or Colima all work |
 | Tilt | 0.37+ | brings the pieces up in dependency order |
 
 ## Running it
@@ -23,26 +23,27 @@ pnpm install
 tilt up
 ```
 
-Then open the Tilt dashboard at **http://localhost:10350** and watch four resources go green in
-order: `postgres` → `migrate` → `api` → `web`.
+Then open the Tilt dashboard at **http://localhost:10350** and watch the resources go green in
+order: `postgres` and `valkey` → `migrate` → `api` → `web`.
 
 | | |
 |---|---|
 | App | http://localhost:5173 |
 | API | http://localhost:3000/api/health |
 | Postgres | `localhost:5433`, user/password/database all `lendit` |
+| Valkey | `localhost:6380`, no auth |
 | Tilt | http://localhost:10350 |
 
 `Ctrl-C` stops Tilt; `tilt down` also removes the Postgres container. The `seed` resource is a
 manual trigger in the Tilt UI — a "reset data" button.
 
-Postgres is on **5433**, not 5432, so it never collides with a Postgres already installed on your
-machine.
+Postgres is on **5433**, not 5432, and Valkey on **6380**, not 6379, so neither collides with one
+already installed on your machine.
 
 ### Without Tilt
 
 ```bash
-docker compose up -d      # postgres
+docker compose up -d postgres valkey
 pnpm db:push              # apply the schema
 pnpm dev:api              # http://localhost:3000
 pnpm dev:web              # http://localhost:5173
@@ -58,12 +59,14 @@ pnpm dev:web              # http://localhost:5173
 | `pnpm test` | Vitest across all packages |
 | `pnpm db:push` | Apply the schema to the dev database |
 | `pnpm db:studio` | Drizzle Studio, a browser UI over the data |
-| `pnpm db:seed` | Wipe and reseed |
+| `pnpm db:seed` | Wipe and reseed, then flush the cache |
+| `pnpm cache:flush` | Drop every cached key under the `lendit:` prefix |
 
 ## Layout
 
 ```
 packages/db       drizzle schema, client, generated validation, constraint tests
+packages/cache    valkey client — optional, the app runs without it
 packages/shared   code shared by api and web — depends on nothing
 apps/api          hono; serves the built client in production
 apps/web          vite + react
@@ -95,6 +98,26 @@ asserts the things the database itself guarantees:
 Every case runs inside a transaction that is rolled back, so pointing the suite at your development
 database will not eat your data. Without `DATABASE_URL` set, that suite skips itself rather than
 failing — which is why CI applies the schema before running tests.
+
+## Caching
+
+Valkey sits in front of the three reads every page makes. Postgres stays the source of truth;
+nothing is written to the cache that could not be rebuilt from it.
+
+| What | Key | TTL | Invalidated by |
+|---|---|---|---|
+| Session → user, on every request | `session:<token digest>` | 5 min, never past expiry | logout |
+| Browse, `GET /api/items` | `items:browse` | 60 s | any item create, edit, archive |
+| Detail, `GET /api/items/:id` | `item:<id>` | 60 s | an edit or archive of that item |
+
+- **It fails open.** With `REDIS_URL` unset the cache is off; with Valkey down, every read goes
+  to Postgres and the health endpoint reports `cache: "down"`. Neither is an error.
+- **Availability is cached too, so loans must invalidate.** Any route that changes a loan's status
+  has to call `invalidateItems(itemId)` from `apps/api/src/lib/item-cache.ts`, or browse will show
+  a borrowed item as available for up to a minute. The one-active-loan rule is unaffected: it lives
+  in Postgres, and a stale page still gets the 409.
+- `?mine=true` is not cached. It is the owner's own view, read straight after their own edits.
+- The TTLs are a backstop for writes that skip the API — the seed, Drizzle Studio, `psql`.
 
 ## Design rules
 

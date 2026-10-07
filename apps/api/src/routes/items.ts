@@ -1,4 +1,5 @@
 import { zValidator } from '@hono/zod-validator'
+import { cache } from '@lendit/cache'
 import { db, items, users } from '@lendit/db'
 import { itemIsAvailable } from '@lendit/db/queries'
 import { itemInput } from '@lendit/db/validation'
@@ -7,6 +8,7 @@ import { and, desc, eq, isNull, type SQL } from 'drizzle-orm'
 import { type Context, Hono } from 'hono'
 import { z } from 'zod'
 import type { AppEnv } from '../env.ts'
+import { browseKey, ITEM_CACHE_TTL_MS, invalidateItems, itemKey } from '../lib/item-cache.ts'
 import { requireUser } from '../middleware.ts'
 
 // Where the column shape from @lendit/db meets the wire vocabulary from
@@ -95,15 +97,20 @@ export const itemsRoutes = new Hono<AppEnv>()
       return c.json({ items: rows.map(publicItem) })
     }
 
-    const rows = await listItems(isNull(items.archivedAt))
-    return c.json({ items: rows.map(publicItem) })
+    const rows = await cache.remember(browseKey, ITEM_CACHE_TTL_MS, async () =>
+      (await listItems(isNull(items.archivedAt))).map(publicItem),
+    )
+    return c.json({ items: rows })
   })
 
   .get('/:id', async (c) => {
     const id = c.req.param('id')
-    const row = await readItem(id)
-    if (!row) return c.json({ error: 'not_found' } as const, 404)
-    return c.json({ item: publicItem(row) })
+    const item = await cache.remember(itemKey(id), ITEM_CACHE_TTL_MS, async () => {
+      const row = await readItem(id)
+      return row ? publicItem(row) : null
+    })
+    if (!item) return c.json({ error: 'not_found' } as const, 404)
+    return c.json({ item })
   })
 
   .post('/', requireUser, zValidator('json', createInput), async (c) => {
@@ -121,6 +128,7 @@ export const itemsRoutes = new Hono<AppEnv>()
       .values({ ...c.req.valid('json'), ownerId: user.id })
       .returning({ id: items.id })
     if (!created) throw new Error('insert returned no row')
+    await invalidateItems(created.id)
 
     const row = await readItem(created.id)
     if (!row) throw new Error('inserted item did not read back')
@@ -135,6 +143,7 @@ export const itemsRoutes = new Hono<AppEnv>()
     if (owned.row.archivedAt) return c.json({ error: 'archived' } as const, 409)
 
     await db.update(items).set(c.req.valid('json')).where(eq(items.id, id))
+    await invalidateItems(id)
 
     const row = await readItem(id)
     if (!row) throw new Error('updated item did not read back')
@@ -155,6 +164,7 @@ export const itemsRoutes = new Hono<AppEnv>()
         .update(items)
         .set({ archivedAt: new Date() })
         .where(and(eq(items.id, id), isNull(items.archivedAt)))
+      await invalidateItems(id)
     }
 
     const row = await readItem(id)

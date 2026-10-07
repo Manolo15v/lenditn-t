@@ -13,6 +13,7 @@
   "dependencies": {
     "@hono/node-server": "^2.1.1",
     "@hono/zod-validator": "^0.9.0",
+    "@lendit/cache": "workspace:*",
     "@lendit/db": "workspace:*",
     "@lendit/shared": "workspace:*",
     "@node-rs/argon2": "^2.1.0",

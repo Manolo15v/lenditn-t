@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:push": "pnpm --filter @lendit/db push",
-    "db:seed": "pnpm --filter @lendit/db seed",
+    "db:seed": "pnpm --filter @lendit/db seed && pnpm cache:flush",
+    "cache:flush": "pnpm --filter @lendit/cache flush",
     "db:studio": "pnpm --filter @lendit/db studio",
     "dev:api": "pnpm --filter @lendit/api dev",
     "dev:web": "pnpm --filter @lendit/web dev"
