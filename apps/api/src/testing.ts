@@ -3,6 +3,7 @@ import { db, items, loans, sessions, users } from '@lendit/db'
 import { inArray } from 'drizzle-orm'
 import { afterEach } from 'vitest'
 import { app } from './app.ts'
+import { invalidateItems } from './lib/item-cache.ts'
 
 // Shared harness for the route suites. Everything here exists because both
 // suites need it and getting it subtly wrong is silent: the teardown order, the
@@ -67,7 +68,10 @@ export function useFixtures() {
     const [l, i, u] = [loanIds.splice(0), itemIds.splice(0), userIds.splice(0)]
 
     if (l.length) await db.delete(loans).where(inArray(loans.id, l))
-    if (i.length) await db.delete(items).where(inArray(items.id, i))
+    if (i.length) {
+      await db.delete(items).where(inArray(items.id, i))
+      await invalidateItems(...i)
+    }
     if (u.length) {
       await db.delete(sessions).where(inArray(sessions.userId, u))
       await db.delete(users).where(inArray(users.id, u))
@@ -119,6 +123,7 @@ export function useFixtures() {
     const [row] = await db.insert(loans).values(values).returning({ id: loans.id })
     if (!row) throw new Error('loan insert returned no row')
     loanIds.push(row.id)
+    await invalidateItems(values.itemId)
     return row
   }
 

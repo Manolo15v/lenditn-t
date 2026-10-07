@@ -19,7 +19,7 @@ local_resource(
         period_secs=2,
         http_get=http_get_action(port=3000, path='/api/health'),
     ),
-    resource_deps=['migrate'],
+    resource_deps=['migrate', 'valkey'],
     labels=['backend'],
 )
 
@@ -34,7 +34,7 @@ local_resource(
 # Manual trigger: a "reset data" button in the Tilt UI.
 local_resource(
     'seed',
-    cmd='pnpm --filter @lendit/db seed',
+    cmd='pnpm db:seed',
     resource_deps=['migrate'],
     trigger_mode=TRIGGER_MODE_MANUAL,
     auto_init=False,

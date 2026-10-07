@@ -104,9 +104,26 @@ describe.skipIf(!(await databaseIsReachable()))('item routes', () => {
     expect(updated.item.category).toBe('Calculators')
   })
 
+  test('an edit shows up on the next read of a page that was already served', async () => {
+    const { cookie } = await actor()
+    const created = await item(cookie)
+    const detail = async () =>
+      (await json<{ item: ItemBody }>(await send('GET', `/api/items/${created.id}`))).item
+
+    expect((await detail()).name).toBe('TI-84 Plus')
+    expect((await browse()).find((i) => i.id === created.id)?.name).toBe('TI-84 Plus')
+
+    await send('PATCH', `/api/items/${created.id}`, { name: 'TI-84 Plus CE' }, cookie)
+
+    expect((await detail()).name).toBe('TI-84 Plus CE')
+    expect((await browse()).find((i) => i.id === created.id)?.name).toBe('TI-84 Plus CE')
+  })
+
   test('archiving hides the item from browse but not from its owner', async () => {
     const { cookie } = await actor()
     const created = await item(cookie)
+
+    expect((await browse()).map((i) => i.id)).toContain(created.id)
 
     const res = await send('POST', `/api/items/${created.id}/archive`, undefined, cookie)
     expect(res.status).toBe(200)
