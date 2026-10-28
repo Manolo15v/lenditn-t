@@ -1,8 +1,8 @@
 import { zValidator } from '@hono/zod-validator'
 import { cache } from '@lendit/cache'
-import { db, items, users } from '@lendit/db'
+import { db, isCheckViolation, items, users } from '@lendit/db'
 import { itemIsAvailable } from '@lendit/db/queries'
-import { itemInput } from '@lendit/db/validation'
+import { itemInput, offerFitsPrice } from '@lendit/db/validation'
 import { ITEM_CATEGORIES } from '@lendit/shared'
 import { and, desc, eq, isNull, type SQL } from 'drizzle-orm'
 import { type Context, Hono } from 'hono'
@@ -22,11 +22,19 @@ import { requireUser } from '../middleware.ts'
 // @lendit/shared. The category list is fixed here and nowhere else on the server.
 const category = z.enum(ITEM_CATEGORIES).nullish()
 
-const createInput = itemInput.extend({ category })
+const itemFields = itemInput.extend({ category })
+
+// A new item has no stored row, so the whole offer rule can be checked here and
+// a bad offer is a 400 rather than a check-constraint 500.
+const createInput = itemFields.refine(
+  (v) => offerFitsPrice(v.pricePerDayCents ?? 0, v.offerPricePerDayCents ?? null),
+  { message: 'offer must be below the price', path: ['offerPricePerDayCents'] },
+)
 
 // Every field optional, but at least one present: an empty body would otherwise
-// be a successful no-op that reads as a saved edit.
-const patchInput = createInput
+// be a successful no-op that reads as a saved edit. Built from itemFields, not
+// createInput — zod will not make a refined object partial.
+const patchInput = itemFields
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: 'no fields to update' })
 
@@ -45,6 +53,7 @@ const columns = {
   description: items.description,
   category: items.category,
   pricePerDayCents: items.pricePerDayCents,
+  offerPricePerDayCents: items.offerPricePerDayCents,
   imagePath: items.imagePath,
   createdAt: items.createdAt,
   archivedAt: items.archivedAt,
@@ -94,6 +103,8 @@ async function ownedItem(id: string, userId: string) {
       id: items.id,
       ownerId: items.ownerId,
       archivedAt: items.archivedAt,
+      pricePerDayCents: items.pricePerDayCents,
+      offerPricePerDayCents: items.offerPricePerDayCents,
       imagePath: items.imagePath,
     })
     .from(items)
@@ -190,7 +201,27 @@ export const itemsRoutes = new Hono<AppEnv>()
     if ('error' in owned) return c.json(owned, owned.error === 'not_found' ? 404 : 403)
     if (owned.row.archivedAt) return c.json({ error: 'archived' } as const, 409)
 
-    await db.update(items).set(c.req.valid('json')).where(eq(items.id, id))
+    // A patch may move either side of the offer rule alone — dropping the price
+    // under a standing offer, or offering on a free item — so it is checked
+    // against the row as it will be after the write, not against the body.
+    const patch = c.req.valid('json')
+    const nextPrice = patch.pricePerDayCents ?? owned.row.pricePerDayCents
+    const nextOffer =
+      patch.offerPricePerDayCents === undefined
+        ? owned.row.offerPricePerDayCents
+        : patch.offerPricePerDayCents
+    if (!offerFitsPrice(nextPrice, nextOffer)) {
+      return c.json({ error: 'offer_not_below_price' } as const, 400)
+    }
+
+    // The check above read the row before writing it; two concurrent patches
+    // can still meet in the middle, and the constraint is what catches that.
+    try {
+      await db.update(items).set(patch).where(eq(items.id, id))
+    } catch (e) {
+      if (isCheckViolation(e)) return c.json({ error: 'offer_not_below_price' } as const, 400)
+      throw e
+    }
     await invalidateItems(id)
 
     const row = await readItem(id)

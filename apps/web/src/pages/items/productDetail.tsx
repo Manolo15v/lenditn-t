@@ -1,4 +1,3 @@
-import type { ItemCategory } from '@lendit/shared'
 import {
   Archive,
   ArrowLeft,
@@ -17,34 +16,26 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type Item } from '../../api'
 import { HeaderData } from '../../components/header/headerData'
 import { ItemForm, type ItemFormData } from '../../components/items/ItemForm'
+import { ItemPrice } from '../../components/items/itemPrice'
 import { Modal } from '../../components/ui/Modal'
 import { ErrorState, Spinner } from '../../components/ui/States'
 import { Toast, type ToastMessage } from '../../components/ui/Toast'
 import { useAuth } from '../../context/AuthContext'
 import { cn } from '../../lib/cn'
 import { syncItemImage } from '../../lib/itemImage'
-import { categoryIcon, formatDate, formatPrice, itemStatus } from '../../lib/items'
+import { categoryIcon, formatDate, itemBody, itemFormData, itemStatus } from '../../lib/items'
 
 const messages: Record<string, string> = {
   not_owner: 'That item belongs to someone else.',
   not_found: 'That item no longer exists.',
   archived: 'That item is archived, so it cannot be edited.',
   unauthenticated: 'Your session expired. Sign in again.',
+  offer_not_below_price: 'The offer has to be lower than the regular price.',
 }
 
 async function errorFrom(res: Response) {
   const body = (await res.json().catch(() => ({}))) as { error?: string }
   return messages[body.error ?? ''] ?? 'Something went wrong. Please try again.'
-}
-
-const toBody = (data: ItemFormData) => {
-  const dollars = Number.parseFloat(data.pricePerDay)
-  return {
-    name: data.name.trim(),
-    description: data.description.trim() || null,
-    category: data.category,
-    pricePerDayCents: Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : 0,
-  }
 }
 
 export function ProductDetail() {
@@ -126,7 +117,7 @@ export function ProductDetail() {
     try {
       const res = await api.api.items[':id'].$patch({
         param: { id: item.id },
-        json: toBody(data),
+        json: itemBody(data),
       })
       if (!res.ok) {
         setFormError(await errorFrom(res))
@@ -293,13 +284,13 @@ export function ProductDetail() {
 
           <aside className="lg:col-span-1">
             <div className="card sticky top-20 p-5">
-              <p className="text-2xl font-semibold tracking-tight text-ink">
-                {formatPrice(item.pricePerDayCents)}
-              </p>
+              <ItemPrice item={item} size="lg" />
               <p className="mt-1 text-xs text-ink-soft">
                 {item.pricePerDayCents === 0
                   ? 'Lent free by a fellow student.'
-                  : 'Charged per day of the loan.'}
+                  : item.offerPricePerDayCents !== null
+                    ? 'Offer rate, charged per day of the loan.'
+                    : 'Charged per day of the loan.'}
               </p>
 
               <div className="mt-5 border-t border-line pt-5">
@@ -395,9 +386,7 @@ export function ProductDetail() {
                       {rel.name}
                     </h3>
                     <p className="mt-0.5 text-xs text-ink-soft">{rel.category ?? 'Other'}</p>
-                    <p className="mt-3 text-sm font-semibold text-ink">
-                      {formatPrice(rel.pricePerDayCents)}
-                    </p>
+                    <ItemPrice item={rel} className="mt-3" />
                   </Link>
                 )
               })}
@@ -414,14 +403,7 @@ export function ProductDetail() {
       >
         <ItemForm
           key={item.id}
-          initialData={{
-            name: item.name,
-            description: item.description ?? '',
-            category: (item.category ?? 'Other') as ItemCategory,
-            pricePerDay:
-              item.pricePerDayCents === 0 ? '' : (item.pricePerDayCents / 100).toFixed(2),
-            imageUrl: item.imageUrl,
-          }}
+          initialData={itemFormData(item)}
           onSubmit={handleEdit}
           onCancel={() => setEditOpen(false)}
           busy={busy}

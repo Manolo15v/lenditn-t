@@ -1,0 +1,5 @@
+# Biome formats with LF and `pnpm lint` fails on anything else. Without this,
+# core.autocrlf=true (the Git for Windows default) checks files out as CRLF, so
+# a Windows clone reports lint errors in files nobody touched. Forcing LF in the
+# working tree makes every checkout match what CI sees.
+* text=auto eol=lf

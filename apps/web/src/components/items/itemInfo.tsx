@@ -2,7 +2,8 @@ import { Archive, ArrowRight, Pencil, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Item } from '../../api'
 import { cn } from '../../lib/cn'
-import { categoryIcon, formatDate, formatPrice, itemStatus } from '../../lib/items'
+import { categoryIcon, formatDate, itemStatus } from '../../lib/items'
+import { ItemPrice } from './itemPrice'
 
 interface ItemInfoProps {
   item: Item
@@ -73,7 +74,7 @@ export function ItemInfo({ item, className, onEdit, onArchive }: ItemInfoProps) 
       </dl>
 
       <footer className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-4">
-        <span className="text-sm font-semibold text-ink">{formatPrice(item.pricePerDayCents)}</span>
+        <ItemPrice item={item} />
 
         {showActions ? (
           <div className="flex items-center gap-1">

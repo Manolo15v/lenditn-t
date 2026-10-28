@@ -10,6 +10,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { Item } from '../api'
+import type { ItemFormData, ItemFormInitialData } from '../components/items/ItemForm'
 
 const CATEGORY_ICONS: Record<ItemCategory, LucideIcon> = {
   Calculators: Calculator,
@@ -57,11 +58,54 @@ export function itemStatus(item: Pick<Item, 'archivedAt' | 'isAvailable'>): Item
   }
 }
 
-// The API stores every listing at 0 cents today, so "Free" is the honest label
-// rather than a discount on an invented list price.
+export const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`
+
+// A price of 0 is a free loan, so "Free" is the honest label rather than a
+// discount on an invented list price.
 export function formatPrice(cents: number): string {
   if (cents === 0) return 'Free'
-  return `$${(cents / 100).toFixed(2)} / day`
+  return `${formatCents(cents)} / day`
+}
+
+// The database keeps an offer strictly between 0 and the price, so the result
+// is always 1–99 and the division can never be by zero.
+export const offerDiscountPercent = (priceCents: number, offerCents: number) =>
+  Math.max(1, Math.round((1 - offerCents / priceCents) * 100))
+
+// Dollars in the form, cents on the wire. Math.round keeps 0.07 from arriving
+// as 6 cents, and a blank or unparseable field means a free loan. Shared by
+// every screen that submits the item form — and by the form's own offer check,
+// which has to compare the cents that will be sent, not the dollars typed.
+export const dollarsToCents = (raw: string) => {
+  const dollars = Number.parseFloat(raw)
+  return Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : 0
+}
+
+export function itemBody(data: ItemFormData) {
+  const price = dollarsToCents(data.pricePerDay)
+  const offer = dollarsToCents(data.offerPricePerDay)
+  return {
+    name: data.name.trim(),
+    description: data.description.trim() || null,
+    category: data.category,
+    pricePerDayCents: price,
+    // Always sent, null included: a cleared field has to end the offer, not
+    // leave the stored one standing. A free item never carries one.
+    offerPricePerDayCents: price > 0 && offer > 0 ? offer : null,
+  }
+}
+
+const centsToField = (cents: number | null) => (cents ? (cents / 100).toFixed(2) : '')
+
+export function itemFormData(item: Item): ItemFormInitialData {
+  return {
+    name: item.name,
+    description: item.description ?? '',
+    category: (item.category ?? 'Other') as ItemCategory,
+    pricePerDay: centsToField(item.pricePerDayCents),
+    offerPricePerDay: centsToField(item.offerPricePerDayCents),
+    imageUrl: item.imageUrl,
+  }
 }
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })

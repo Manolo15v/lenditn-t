@@ -104,6 +104,8 @@ const insertedItems = await db
       description: 'Auto-ranging, with probes.',
       category: 'Other',
       pricePerDayCents: 60,
+      // The one listing on offer, so browse shows the struck-through price.
+      offerPricePerDayCents: 45,
     },
   ])
   .returning({ id: items.id, pricePerDayCents: items.pricePerDayCents })

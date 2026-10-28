@@ -12,7 +12,7 @@ import { createSession, destroySession, SESSION_COOKIE } from '../lib/session.ts
 // apart on flags. Lax rather than Strict: the cookie must survive arriving from
 // an external link, and the API only accepts JSON bodies anyway.
 async function issueSession(c: Context<AppEnv>, userId: string) {
-  const { token, expiresAt } = await createSession(userId)
+  const { token, expiresAt } = await createSession(userId, c.req.header('user-agent'))
 
   setCookie(c, SESSION_COOKIE, token, {
     httpOnly: true,

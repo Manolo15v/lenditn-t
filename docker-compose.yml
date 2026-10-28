@@ -21,6 +21,25 @@ services:
       timeout: 3s
       retries: 15
 
+  mongo:
+    image: mongo:8
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: lendit
+      MONGO_INITDB_ROOT_PASSWORD: lendit
+      MONGO_INITDB_DATABASE: lendit
+    ports: 
+      - "27018:27017"
+    volumes:
+      - mongodata:/data/db
+      # Every .js here runs once, in name order, on an empty volume.
+      - ./docker/mongo/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD","mongosh","--quiet","--eval","db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 7s
+      retries: 15
+      # start_period: 30s no es necesario para evaluar el contenedor una vez
+
   valkey:
     image: valkey/valkey:9-alpine
     command: ["valkey-server", "--save", "", "--appendonly", "no"]
@@ -41,6 +60,7 @@ services:
       # compose network, not the host loopback.
       DATABASE_URL: postgres://lendit:lendit@postgres:5432/lendit
       REDIS_URL: redis://valkey:6379
+      MONGO_URL: mongodb://lendit:lendit@mongo:27017/lendit?authSource=admin
       API_PORT: 3000
     ports:
       - "3000:3000"
@@ -57,6 +77,8 @@ services:
       - cache_pkg_node_modules:/repo/packages/cache/node_modules
     depends_on:
       postgres:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
       valkey:
         condition: service_healthy
@@ -91,3 +113,4 @@ volumes:
   db_pkg_node_modules:
   shared_pkg_node_modules:
   cache_pkg_node_modules:
+  mongodata:

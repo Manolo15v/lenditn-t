@@ -9,3 +9,5 @@ export const api = hc<AppType>('/')
 // the compiler would not say a word. The status argument matters — without it
 // the type unions in the 401 body.
 export type Item = InferResponseType<typeof api.api.items.$get, 200>['items'][number]
+
+export type UserSession = InferResponseType<typeof api.api.sessions.$get, 200>['sessions'][number]
