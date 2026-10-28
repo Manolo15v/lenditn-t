@@ -10,7 +10,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { Item } from '../api'
-import type { ItemFormData } from '../components/items/ItemForm'
+import type { ItemFormData, ItemFormInitialData } from '../components/items/ItemForm'
 
 const CATEGORY_ICONS: Record<ItemCategory, LucideIcon> = {
   Calculators: Calculator,
@@ -97,13 +97,14 @@ export function itemBody(data: ItemFormData) {
 
 const centsToField = (cents: number | null) => (cents ? (cents / 100).toFixed(2) : '')
 
-export function itemFormData(item: Item): ItemFormData {
+export function itemFormData(item: Item): ItemFormInitialData {
   return {
     name: item.name,
     description: item.description ?? '',
     category: (item.category ?? 'Other') as ItemCategory,
     pricePerDay: centsToField(item.pricePerDayCents),
     offerPricePerDay: centsToField(item.offerPricePerDayCents),
+    imageUrl: item.imageUrl,
   }
 }
 

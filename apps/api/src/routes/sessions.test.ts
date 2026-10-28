@@ -80,6 +80,9 @@ describe.skipIf(!(await databaseIsReachable()))('session routes', () => {
     const { cookie, email, password } = await signup()
     const phone = await loginFrom(PHONE, email, password)
     const target = (await list(cookie)).find((s) => !s.current)
+    // Resolve it first so it sits in the session cache: a revoke that only
+    // deleted the row would pass this test without it.
+    expect(await me(phone)).not.toBeNull()
 
     const res = await send('DELETE', `/api/sessions/${target?.id}`, undefined, cookie)
     expect(res.status).toBe(200)
@@ -118,6 +121,9 @@ describe.skipIf(!(await databaseIsReachable()))('session routes', () => {
     const phone = await loginFrom(PHONE, email, password)
     const tablet = await loginFrom('Mozilla/5.0 (iPad) Safari/604.1', email, password)
     const stranger = await signup()
+    // Cached before the revoke, for the same reason as above.
+    expect(await me(phone)).not.toBeNull()
+    expect(await me(tablet)).not.toBeNull()
 
     const res = await send('DELETE', '/api/sessions', undefined, cookie)
     expect(res.status).toBe(200)

@@ -66,10 +66,13 @@ export async function resolveSession(token: string): Promise<SessionUser | null>
 
 // A null tombstone rather than a delete: a resolve already in flight would
 // otherwise re-cache the session after logout. Its ifAbsent write loses to this.
+const tombstone = (ids: string[]) =>
+  Promise.all(ids.map((id) => cache.write(cacheKey(id), null, CACHE_TTL_MS)))
+
 export async function destroySession(token: string) {
   const id = digest(token)
   await db.delete(sessions).where(eq(sessions.id, id))
-  await cache.write(cacheKey(id), null, CACHE_TTL_MS)
+  await tombstone([id])
 }
 
 // The digest doubles as the session's public handle. It is safe to hand to the
@@ -110,12 +113,19 @@ export async function listSessions(userId: string, currentToken: string) {
 export const isCurrentSession = (sessionId: string, currentToken: string) =>
   sessionId === digest(currentToken)
 
+// Revoking has to tombstone the cache exactly like logout does. Deleting the row
+// alone leaves the revoked device signed in until its cached entry expires —
+// up to CACHE_TTL_MS — which is the one thing this feature promises not to do.
+// Only ids that were actually removed are written, so a guessed id cannot plant
+// entries in the cache.
+
 /** True when a row was removed — false means not this user's session, or already gone. */
 export async function revokeSession(userId: string, sessionId: string) {
   const removed = await db
     .delete(sessions)
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
     .returning({ id: sessions.id })
+  await tombstone(removed.map((r) => r.id))
   return removed.length > 0
 }
 
@@ -125,6 +135,7 @@ export async function revokeOtherSessions(userId: string, currentToken: string) 
     .delete(sessions)
     .where(and(eq(sessions.userId, userId), ne(sessions.id, digest(currentToken))))
     .returning({ id: sessions.id })
+  await tombstone(removed.map((r) => r.id))
   return removed.length
 }
 
