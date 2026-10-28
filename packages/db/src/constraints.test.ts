@@ -129,6 +129,27 @@ describe.skipIf(!(await databaseIsReachable()))('database constraints', () => {
     })
   })
 
+  test('an offer at or above the price, or on a free item, is refused', async () => {
+    await inRollback(async (tx) => {
+      const { ownerId } = await seedOwnerBorrowerItem(tx)
+
+      for (const values of [
+        { pricePerDayCents: 500, offerPricePerDayCents: 500 },
+        { pricePerDayCents: 500, offerPricePerDayCents: 0 },
+        { pricePerDayCents: 0, offerPricePerDayCents: 100 },
+      ]) {
+        // Each attempt in its own savepoint: a failed statement aborts the
+        // surrounding transaction, and the next insert would report 25P02.
+        const code = await failureCode(
+          tx.transaction((sp) =>
+            sp.insert(items).values({ ownerId, name: 'Bad offer', ...values }),
+          ),
+        )
+        expect(code).toBe('23514')
+      }
+    })
+  })
+
   test('a due date before the request is refused', async () => {
     await inRollback(async (tx) => {
       const { borrowerId, itemId } = await seedOwnerBorrowerItem(tx)

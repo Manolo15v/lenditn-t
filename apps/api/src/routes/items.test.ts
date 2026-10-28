@@ -176,4 +176,80 @@ describe.skipIf(!(await databaseIsReachable()))('item routes', () => {
     // An empty patch is a no-op dressed up as a saved edit.
     expect((await send('PATCH', `/api/items/${created.id}`, {}, cookie)).status).toBe(400)
   })
+
+  test('a priced item can be put on offer, and the offer can be ended', async () => {
+    const { cookie } = await actor()
+    const created = await item(cookie, { pricePerDayCents: 500 })
+    // No offer unless the owner sets one.
+    expect(created.offerPricePerDayCents).toBeNull()
+
+    const onOffer = await send(
+      'PATCH',
+      `/api/items/${created.id}`,
+      { offerPricePerDayCents: 350 },
+      cookie,
+    )
+    expect(onOffer.status).toBe(200)
+    const offered = (await json<{ item: ItemBody }>(onOffer)).item
+    expect(offered.offerPricePerDayCents).toBe(350)
+    // The regular price is kept, so the listing can show what was knocked off.
+    expect(offered.pricePerDayCents).toBe(500)
+    expect((await browse()).find((i) => i.id === created.id)?.offerPricePerDayCents).toBe(350)
+
+    const ended = await send(
+      'PATCH',
+      `/api/items/${created.id}`,
+      { offerPricePerDayCents: null },
+      cookie,
+    )
+    expect((await json<{ item: ItemBody }>(ended)).item.offerPricePerDayCents).toBeNull()
+
+    // An offer can also be set at listing time.
+    const listed = await item(cookie, { pricePerDayCents: 500, offerPricePerDayCents: 400 })
+    expect(listed.offerPricePerDayCents).toBe(400)
+  })
+
+  test('an offer must sit strictly between zero and the price', async () => {
+    const { cookie } = await actor()
+
+    // On create the whole rule is in the body, so the validator answers.
+    expect(
+      (await createItem(cookie, { pricePerDayCents: 500, offerPricePerDayCents: 500 })).status,
+    ).toBe(400)
+    expect(
+      (await createItem(cookie, { pricePerDayCents: 500, offerPricePerDayCents: 0 })).status,
+    ).toBe(400)
+    // A free item has nothing to discount.
+    expect((await createItem(cookie, { offerPricePerDayCents: 100 })).status).toBe(400)
+
+    // On a patch one side can move alone, so the check runs against the stored
+    // row. Without it these are check-constraint 500s.
+    const priced = await item(cookie, { pricePerDayCents: 500, offerPricePerDayCents: 300 })
+    const cheaper = await send(
+      'PATCH',
+      `/api/items/${priced.id}`,
+      { pricePerDayCents: 300 },
+      cookie,
+    )
+    expect(cheaper.status).toBe(400)
+    expect(await json(cheaper)).toEqual({ error: 'offer_not_below_price' })
+
+    const free = await item(cookie)
+    const offerOnFree = await send(
+      'PATCH',
+      `/api/items/${free.id}`,
+      { offerPricePerDayCents: 100 },
+      cookie,
+    )
+    expect(offerOnFree.status).toBe(400)
+
+    // Moving both together is fine, as long as the result fits.
+    const both = await send(
+      'PATCH',
+      `/api/items/${priced.id}`,
+      { pricePerDayCents: 300, offerPricePerDayCents: 200 },
+      cookie,
+    )
+    expect(both.status).toBe(200)
+  })
 })

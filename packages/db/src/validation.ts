@@ -41,6 +41,7 @@ const itemInsert = createInsertSchema(items, {
   description: (s) => s.trim().max(2000),
   category: (s) => s.trim().min(1).max(40),
   pricePerDayCents: (s) => s.min(0).max(100_000_000),
+  offerPricePerDayCents: (s) => s.min(1).max(100_000_000),
 })
 
 // ownerId is absent on purpose: the owner comes from the session, never from
@@ -65,8 +66,21 @@ export const itemInput = itemInsert
     description: true,
     category: true,
     pricePerDayCents: true,
+    offerPricePerDayCents: true,
   })
-  .partial({ description: true, category: true, pricePerDayCents: true })
+  .partial({
+    description: true,
+    category: true,
+    pricePerDayCents: true,
+    offerPricePerDayCents: true,
+  })
+
+// The cross-field half of items_offer_below_price. It is not a refinement on
+// itemInput because zod refuses .partial() on a refined object, and the route
+// still has to derive its patch schema — and a patch has to be checked against
+// the stored row, which no schema can see. One rule, two call sites.
+export const offerFitsPrice = (pricePerDayCents: number, offerPricePerDayCents: number | null) =>
+  offerPricePerDayCents === null || offerPricePerDayCents < pricePerDayCents
 
 export type SignupInput = z.infer<typeof signupInput>
 export type LoginInput = z.infer<typeof loginInput>

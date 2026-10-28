@@ -1,4 +1,3 @@
-import type { ItemCategory } from '@lendit/shared'
 import { Archive, Loader2, PackagePlus } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type Item } from '../../api'
@@ -8,24 +7,14 @@ import { ItemList } from '../../components/items/itemList'
 import { Modal } from '../../components/ui/Modal'
 import { CardSkeleton, ErrorState } from '../../components/ui/States'
 import { Toast, type ToastMessage } from '../../components/ui/Toast'
-
-// Dollars in the form, cents on the wire. Math.round keeps 0.07 from arriving
-// as 6 cents, and a blank or unparseable field means a free loan.
-const toBody = (data: ItemFormData) => {
-  const dollars = Number.parseFloat(data.pricePerDay)
-  return {
-    name: data.name.trim(),
-    description: data.description.trim() || null,
-    category: data.category,
-    pricePerDayCents: Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : 0,
-  }
-}
+import { itemBody, itemFormData } from '../../lib/items'
 
 const messages: Record<string, string> = {
   not_owner: 'That item belongs to someone else.',
   not_found: 'That item no longer exists.',
   archived: 'That item is archived, so it cannot be edited.',
   unauthenticated: 'Your session expired. Sign in again.',
+  offer_not_below_price: 'The offer has to be lower than the regular price.',
 }
 
 async function errorFrom(res: Response) {
@@ -94,8 +83,8 @@ export function ItemDashboard() {
     setFormError(null)
     try {
       const res = editing
-        ? await api.api.items[':id'].$patch({ param: { id: editing.id }, json: toBody(data) })
-        : await api.api.items.$post({ json: toBody(data) })
+        ? await api.api.items[':id'].$patch({ param: { id: editing.id }, json: itemBody(data) })
+        : await api.api.items.$post({ json: itemBody(data) })
 
       if (!res.ok) {
         setFormError(await errorFrom(res))
@@ -205,26 +194,16 @@ export function ItemDashboard() {
         open={formOpen}
         title={editing ? 'Edit item' : 'List an item'}
         description={
-          editing ? 'Changes are visible to borrowers right away.' : 'All loans are free to borrow.'
+          editing
+            ? 'Changes are visible to borrowers right away.'
+            : 'Lend it free, or set a daily price and an optional offer.'
         }
         onClose={closeForm}
       >
         <ItemForm
           // Remounts on target change so the fields reflect the item being edited.
           key={editing?.id ?? 'new'}
-          initialData={
-            editing
-              ? {
-                  name: editing.name,
-                  description: editing.description ?? '',
-                  category: (editing.category ?? 'Other') as ItemCategory,
-                  pricePerDay:
-                    editing.pricePerDayCents === 0
-                      ? ''
-                      : (editing.pricePerDayCents / 100).toFixed(2),
-                }
-              : undefined
-          }
+          initialData={editing ? itemFormData(editing) : undefined}
           onSubmit={handleSubmit}
           onCancel={closeForm}
           busy={busy}

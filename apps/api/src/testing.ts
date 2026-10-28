@@ -22,9 +22,18 @@ export type ItemBody = {
   description: string | null
   category: string | null
   pricePerDayCents: number
+  offerPricePerDayCents: number | null
   createdAt: string
   archivedAt: string | null
   isAvailable: boolean
+}
+
+export type SessionBody = {
+  id: string
+  userAgent: string | null
+  createdAt: string
+  expiresAt: string
+  current: boolean
 }
 
 // Routes are exercised through app.request, not a listening server: same

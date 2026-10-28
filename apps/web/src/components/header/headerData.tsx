@@ -1,3 +1,4 @@
+import { MonitorSmartphone } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { cn } from '../../lib/cn'
@@ -43,6 +44,16 @@ export function HeaderData() {
             onClick={() => clickNavigate('/dashboard')}
           >
             Admin
+          </button>
+          {/* Icon-only below sm, so three buttons still fit beside the logo on a phone. */}
+          <button
+            type="button"
+            className="btn btn-secondary px-3 py-2 text-xs sm:px-4 sm:text-sm"
+            onClick={() => clickNavigate('/sessions')}
+            aria-label="Sessions"
+          >
+            <MonitorSmartphone className="size-4 sm:hidden" aria-hidden="true" />
+            <span className="hidden sm:inline">Sessions</span>
           </button>
           <button
             type="button"

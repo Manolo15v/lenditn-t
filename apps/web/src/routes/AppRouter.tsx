@@ -5,6 +5,7 @@ import { ItemDashboard } from '../pages/items/itemDashboard'
 import { ItemSeeker } from '../pages/items/itemSeeker'
 import { ProductDetail } from '../pages/items/productDetail'
 import { Login } from '../pages/login/login'
+import { Sessions } from '../pages/sessions/sessions'
 
 function FullPageSpinner() {
   return (
@@ -53,6 +54,7 @@ export function AppRouter() {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<ItemDashboard />} />
+            <Route path="/sessions" element={<Sessions />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

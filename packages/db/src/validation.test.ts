@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { itemInput, loginInput, signupInput } from './validation.ts'
+import { itemInput, loginInput, offerFitsPrice, signupInput } from './validation.ts'
 
 describe('signupInput', () => {
   test('trims the name and folds the email to lowercase', () => {
@@ -85,5 +85,25 @@ describe('itemInput', () => {
 
     expect(parsed.description).toBeNull()
     expect(parsed.category).toBeNull()
+  })
+
+  test('an offer is optional, nullable, and a positive whole number of cents', () => {
+    expect(itemInput.parse({ name: 'X' }).offerPricePerDayCents).toBeUndefined()
+    expect(itemInput.parse({ name: 'X', offerPricePerDayCents: null }).offerPricePerDayCents).toBe(
+      null,
+    )
+    // Zero would be a free loan wearing an offer badge; that is price 0.
+    expect(itemInput.safeParse({ name: 'X', offerPricePerDayCents: 0 }).success).toBe(false)
+    expect(itemInput.safeParse({ name: 'X', offerPricePerDayCents: 1.5 }).success).toBe(false)
+    expect(itemInput.safeParse({ name: 'X', offerPricePerDayCents: 1 }).success).toBe(true)
+  })
+})
+
+describe('offerFitsPrice', () => {
+  test('an offer has to undercut the price, and no offer always fits', () => {
+    expect(offerFitsPrice(500, 499)).toBe(true)
+    expect(offerFitsPrice(500, 500)).toBe(false)
+    expect(offerFitsPrice(0, 1)).toBe(false)
+    expect(offerFitsPrice(0, null)).toBe(true)
   })
 })

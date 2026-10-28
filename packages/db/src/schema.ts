@@ -53,6 +53,11 @@ export const items = pgTable(
     // database so a raw insert and the seed agree with the API on what "free"
     // means, and so the column can be omitted from the wire entirely.
     pricePerDayCents: integer('price_per_day_cents').notNull().default(0),
+    // A reduced rate the owner can put a priced item on. Null means no offer.
+    // The regular price stays on the row so the listing can show both, and so
+    // ending the offer is clearing one column rather than remembering a number.
+    // A loan snapshots whichever rate is in force when it is requested.
+    offerPricePerDayCents: integer('offer_price_per_day_cents'),
     createdAt: createdAt(),
     // Items are archived, never deleted — loan history has to stay readable.
     archivedAt: timestamp('archived_at', { withTimezone: true }),
@@ -60,6 +65,12 @@ export const items = pgTable(
   (t) => [
     index('items_owner_idx').on(t.ownerId),
     check('items_price_non_negative', sql`${t.pricePerDayCents} >= 0`),
+    // Strictly between zero and the regular price: a free item cannot be on
+    // offer, and an "offer" can never raise what a borrower pays.
+    check(
+      'items_offer_below_price',
+      sql`${t.offerPricePerDayCents} is null or (${t.offerPricePerDayCents} > 0 and ${t.offerPricePerDayCents} < ${t.pricePerDayCents})`,
+    ),
   ],
 )
 
@@ -127,6 +138,9 @@ export const sessions = pgTable(
       .references(() => users.id, { onDelete: 'restrict' }),
     createdAt: createdAt(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    // Captured once at sign-in so the account page can tell sessions apart.
+    // Display only — it is client-supplied and proves nothing.
+    userAgent: text('user_agent'),
   },
   (t) => [index('sessions_user_idx').on(t.userId)],
 )

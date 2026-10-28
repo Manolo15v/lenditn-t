@@ -1,6 +1,8 @@
 import { ITEM_CATEGORIES, type ItemCategory } from '@lendit/shared'
 import { CircleAlert, Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import { cn } from '../../lib/cn'
+import { dollarsToCents, formatCents } from '../../lib/items'
 
 export interface ItemFormData {
   name: string
@@ -8,6 +10,8 @@ export interface ItemFormData {
   category: ItemCategory
   // Kept as the raw input string so a half-typed "1." does not fight the field.
   pricePerDay: string
+  // Same, and blank means no offer.
+  offerPricePerDay: string
 }
 
 interface ItemFormProps {
@@ -33,7 +37,20 @@ export function ItemForm({
     description: initialData?.description ?? '',
     category: initialData?.category ?? 'Other',
     pricePerDay: initialData?.pricePerDay ?? '',
+    offerPricePerDay: initialData?.offerPricePerDay ?? '',
   })
+
+  // Mirrors the server's rule so the owner sees the problem while typing, not
+  // as a failed save. Compared in cents, as sent: $0.499 against $0.50 looks
+  // lower here but rounds to the same 50 on the wire. The field is only offered
+  // once there is a price to cut.
+  const priceCents = dollarsToCents(formData.pricePerDay)
+  const offerCents = dollarsToCents(formData.offerPricePerDay)
+  const hasOffer = priceCents > 0 && formData.offerPricePerDay.trim() !== ''
+  const offerError =
+    hasOffer && !(offerCents > 0 && offerCents < priceCents)
+      ? `The offer has to be above $0 and below ${formatCents(priceCents)}.`
+      : null
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
@@ -44,7 +61,7 @@ export function ItemForm({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!formData.name.trim() || busy) return
+    if (!formData.name.trim() || offerError || busy) return
     onSubmit(formData)
   }
 
@@ -119,6 +136,45 @@ export function ItemForm({
         <p className="mt-1.5 text-[11px] text-ink-faint">Leave empty to lend it for free.</p>
       </div>
 
+      {priceCents > 0 && (
+        <div>
+          <label htmlFor="offerPricePerDay" className="label">
+            Offer price per day <span className="font-normal text-ink-faint">(optional)</span>
+          </label>
+          <div className="relative">
+            <span
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm
+                text-ink-faint"
+              aria-hidden="true"
+            >
+              $
+            </span>
+            <input
+              id="offerPricePerDay"
+              name="offerPricePerDay"
+              type="number"
+              inputMode="decimal"
+              min="0.01"
+              step="0.01"
+              className="field pl-7"
+              placeholder="No offer"
+              value={formData.offerPricePerDay}
+              onChange={handleChange}
+              disabled={busy}
+              aria-invalid={offerError !== null}
+              aria-describedby="offerPricePerDay-hint"
+            />
+          </div>
+          <p
+            id="offerPricePerDay-hint"
+            className={cn('mt-1.5 text-[11px]', offerError ? 'text-red-600' : 'text-ink-faint')}
+          >
+            {offerError ??
+              'A reduced rate shown next to the regular one. Clear it to end the offer.'}
+          </p>
+        </div>
+      )}
+
       <div>
         <div className="flex items-baseline justify-between">
           <label htmlFor="description" className="label">
@@ -159,7 +215,7 @@ export function ItemForm({
         <button
           type="submit"
           className="btn-accent"
-          disabled={busy || !formData.name.trim()}
+          disabled={busy || !formData.name.trim() || offerError !== null}
           aria-busy={busy}
         >
           {busy && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}

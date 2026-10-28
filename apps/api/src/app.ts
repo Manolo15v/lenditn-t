@@ -6,6 +6,7 @@ import { attachUser } from './middleware.ts'
 import { auth } from './routes/auth.ts'
 import { itemSpecsRoutes } from './routes/item-specs.ts'
 import { itemsRoutes } from './routes/items.ts'
+import { sessionsRoutes } from './routes/sessions.ts'
 
 const health = new Hono<AppEnv>().get('/health', async (c) => {
   const [db, mongo] = await Promise.all([
@@ -28,5 +29,6 @@ export const app = new Hono<AppEnv>()
   .route('/api/auth', auth)
   .route('/api/items', itemsRoutes)
   .route('/api/specs', itemSpecsRoutes)
+  .route('/api/sessions', sessionsRoutes)
 
 export type AppType = typeof app
