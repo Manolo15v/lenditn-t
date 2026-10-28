@@ -1,4 +1,6 @@
+import sharp from 'sharp'
 import { describe, expect, test } from 'vitest'
+import { app } from '../app.ts'
 import { databaseIsReachable, type ItemBody, json, send, useFixtures } from '../testing.ts'
 
 const { actor, createItem, item, insertLoan } = useFixtures()
@@ -8,6 +10,25 @@ const browse = async (query = '', cookie?: string) =>
     .items
 
 const dueTomorrow = () => new Date(Date.now() + 86_400_000)
+
+async function pngFile(width: number, height: number, name = 'item.png') {
+  const buffer = await sharp({
+    create: { width, height, channels: 3, background: { r: 40, g: 120, b: 200 } },
+  })
+    .png()
+    .toBuffer()
+  return new File([buffer], name, { type: 'image/png' })
+}
+
+async function uploadImage(itemId: string, file: File, cookie: string) {
+  const form = new FormData()
+  form.append('image', file)
+  return app.request(`/api/items/${itemId}/image`, {
+    method: 'POST',
+    headers: cookie ? { cookie } : {},
+    body: form,
+  })
+}
 
 describe.skipIf(!(await databaseIsReachable()))('item routes', () => {
   test('a listed item is free by default and shows up in browse', async () => {
@@ -192,5 +213,50 @@ describe.skipIf(!(await databaseIsReachable()))('item routes', () => {
     const created = await item(cookie)
     // An empty patch is a no-op dressed up as a saved edit.
     expect((await send('PATCH', `/api/items/${created.id}`, {}, cookie)).status).toBe(400)
+  })
+
+  test('an 800×800 image is accepted, served, and removable', async () => {
+    const { cookie } = await actor()
+    const created = await item(cookie)
+    expect(created.imageUrl).toBeNull()
+
+    const ok = await uploadImage(created.id, await pngFile(800, 800), cookie)
+    expect(ok.status).toBe(200)
+    const withPhoto = await json<{ item: ItemBody }>(ok)
+    expect(withPhoto.item.imageUrl).toBe(`/api/items/${created.id}/image`)
+
+    const served = await send('GET', `/api/items/${created.id}/image`)
+    expect(served.status).toBe(200)
+    expect(served.headers.get('content-type')).toBe('image/webp')
+    const bytes = Buffer.from(await served.arrayBuffer())
+    const meta = await sharp(bytes).metadata()
+    expect(meta.width).toBe(800)
+    expect(meta.height).toBe(800)
+    expect(meta.format).toBe('webp')
+
+    const removed = await app.request(`/api/items/${created.id}/image`, {
+      method: 'DELETE',
+      headers: { cookie },
+    })
+    expect(removed.status).toBe(200)
+    expect((await json<{ item: ItemBody }>(removed)).item.imageUrl).toBeNull()
+    expect((await send('GET', `/api/items/${created.id}/image`)).status).toBe(404)
+  })
+
+  test('image upload rejects wrong size, strangers, and archived items', async () => {
+    const owner = await actor()
+    const stranger = await actor()
+    const created = await item(owner.cookie)
+
+    const wrongSize = await uploadImage(created.id, await pngFile(640, 480), owner.cookie)
+    expect(wrongSize.status).toBe(400)
+    expect(await json(wrongSize)).toEqual({ error: 'wrong_dimensions' })
+
+    const forbidden = await uploadImage(created.id, await pngFile(800, 800), stranger.cookie)
+    expect(forbidden.status).toBe(403)
+
+    await send('POST', `/api/items/${created.id}/archive`, undefined, owner.cookie)
+    const archived = await uploadImage(created.id, await pngFile(800, 800), owner.cookie)
+    expect(archived.status).toBe(409)
   })
 })
