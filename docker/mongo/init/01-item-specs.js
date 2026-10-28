@@ -1,8 +1,7 @@
-db= db.getSibling("lendit");
+db = db.getSibling('lendit')
 
-
-db.createCollection("item_specs", {
-    validator: {
+db.createCollection('item_specs', {
+  validator: {
     $jsonSchema: {
       bsonType: 'object',
       required: ['_id', 'category', 'attributes', 'conditionLog', 'updatedAt'],
@@ -36,9 +35,8 @@ db.createCollection("item_specs", {
   validationAction: 'error',
 })
 
+db.item_specs.createIndex({ category: 1 })
 
-db.item_specs.createIndex({category: 1})
+db.item_specs.createIndex({ 'attributes.$**': 1 })
 
-db.item_specs.createIndex({"attributes.$**": 1})
-
-db.item_specs.createIndex({"conditionLog.loanId": 1}, {sparse: true})
+db.item_specs.createIndex({ 'conditionLog.loanId': 1 }, { sparse: true })
