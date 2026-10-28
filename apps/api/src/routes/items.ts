@@ -6,9 +6,16 @@ import { itemInput } from '@lendit/db/validation'
 import { ITEM_CATEGORIES } from '@lendit/shared'
 import { and, desc, eq, isNull, type SQL } from 'drizzle-orm'
 import { type Context, Hono } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { z } from 'zod'
 import type { AppEnv } from '../env.ts'
 import { browseKey, ITEM_CACHE_TTL_MS, invalidateItems, itemKey } from '../lib/item-cache.ts'
+import {
+  ITEM_IMAGE_MAX_BYTES,
+  readStoredImage,
+  removeStoredImage,
+  validateAndStoreItemImage,
+} from '../lib/item-image.ts'
 import { requireUser } from '../middleware.ts'
 
 // Where the column shape from @lendit/db meets the wire vocabulary from
@@ -23,6 +30,10 @@ const patchInput = createInput
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: 'no fields to update' })
 
+const imageForm = z.object({
+  image: z.instanceof(File, { message: 'image required' }),
+})
+
 // isAvailable is derived, never stored — the single definition of it lives in
 // @lendit/db/queries. mapWith gives the projected `not exists` a boolean type;
 // without it the column comes back as unknown.
@@ -34,18 +45,29 @@ const columns = {
   description: items.description,
   category: items.category,
   pricePerDayCents: items.pricePerDayCents,
+  imagePath: items.imagePath,
   createdAt: items.createdAt,
   archivedAt: items.archivedAt,
   isAvailable: itemIsAvailable.mapWith(Boolean),
 }
 
-type Row = { createdAt: Date; archivedAt: Date | null }
+type Row = {
+  id: string
+  imagePath: string | null
+  createdAt: Date
+  archivedAt: Date | null
+}
 
-const publicItem = <T extends Row>(row: T) => ({
-  ...row,
-  createdAt: row.createdAt.toISOString(),
-  archivedAt: row.archivedAt?.toISOString() ?? null,
-})
+const publicItem = <T extends Row>(row: T) => {
+  const { imagePath, createdAt, archivedAt, ...rest } = row
+  return {
+    ...rest,
+    // Public URL, not the on-disk filename. Clients never see uploads/.
+    imageUrl: imagePath ? (`/api/items/${row.id}/image` as const) : null,
+    createdAt: createdAt.toISOString(),
+    archivedAt: archivedAt?.toISOString() ?? null,
+  }
+}
 
 // cuid2 ids are not creation-ordered, so newest-first has to come from the
 // timestamp. Sorting by id would look right and be arbitrary.
@@ -68,7 +90,12 @@ function currentUser(c: Context<AppEnv>) {
 
 async function ownedItem(id: string, userId: string) {
   const [row] = await db
-    .select({ id: items.id, ownerId: items.ownerId, archivedAt: items.archivedAt })
+    .select({
+      id: items.id,
+      ownerId: items.ownerId,
+      archivedAt: items.archivedAt,
+      imagePath: items.imagePath,
+    })
     .from(items)
     .where(eq(items.id, id))
     .limit(1)
@@ -101,6 +128,27 @@ export const itemsRoutes = new Hono<AppEnv>()
       (await listItems(isNull(items.archivedAt))).map(publicItem),
     )
     return c.json({ items: rows })
+  })
+
+  .get('/:id/image', async (c) => {
+    const id = c.req.param('id')
+    const [row] = await db
+      .select({ imagePath: items.imagePath })
+      .from(items)
+      .where(eq(items.id, id))
+      .limit(1)
+
+    if (!row?.imagePath) return c.json({ error: 'not_found' } as const, 404)
+
+    try {
+      const bytes = await readStoredImage(row.imagePath)
+      return c.body(bytes, 200, {
+        'content-type': 'image/webp',
+        'cache-control': 'public, max-age=86400',
+      })
+    } catch {
+      return c.json({ error: 'not_found' } as const, 404)
+    }
   })
 
   .get('/:id', async (c) => {
@@ -144,6 +192,61 @@ export const itemsRoutes = new Hono<AppEnv>()
 
     await db.update(items).set(c.req.valid('json')).where(eq(items.id, id))
     await invalidateItems(id)
+
+    const row = await readItem(id)
+    if (!row) throw new Error('updated item did not read back')
+    return c.json({ item: publicItem(row) })
+  })
+
+  .post(
+    '/:id/image',
+    requireUser,
+    bodyLimit({
+      maxSize: ITEM_IMAGE_MAX_BYTES,
+      onError: (c) => c.json({ error: 'too_large' } as const, 413),
+    }),
+    zValidator('form', imageForm),
+    async (c) => {
+      const user = currentUser(c)
+      const id = c.req.param('id')
+      const owned = await ownedItem(id, user.id)
+      if ('error' in owned) return c.json(owned, owned.error === 'not_found' ? 404 : 403)
+      if (owned.row.archivedAt) return c.json({ error: 'archived' } as const, 409)
+
+      const { image } = c.req.valid('form')
+      const stored = await validateAndStoreItemImage(id, image)
+      if (!stored.ok) {
+        const status = stored.error === 'too_large' ? 413 : 400
+        return c.json({ error: stored.error } as const, status)
+      }
+
+      // Drop the previous file only after the new one landed, so a failed write
+      // does not leave the listing without a photo.
+      if (owned.row.imagePath && owned.row.imagePath !== stored.filename) {
+        await removeStoredImage(owned.row.imagePath)
+      }
+
+      await db.update(items).set({ imagePath: stored.filename }).where(eq(items.id, id))
+      await invalidateItems(id)
+
+      const row = await readItem(id)
+      if (!row) throw new Error('updated item did not read back')
+      return c.json({ item: publicItem(row) })
+    },
+  )
+
+  .delete('/:id/image', requireUser, async (c) => {
+    const user = currentUser(c)
+    const id = c.req.param('id')
+    const owned = await ownedItem(id, user.id)
+    if ('error' in owned) return c.json(owned, owned.error === 'not_found' ? 404 : 403)
+    if (owned.row.archivedAt) return c.json({ error: 'archived' } as const, 409)
+
+    if (owned.row.imagePath) {
+      await removeStoredImage(owned.row.imagePath)
+      await db.update(items).set({ imagePath: null }).where(eq(items.id, id))
+      await invalidateItems(id)
+    }
 
     const row = await readItem(id)
     if (!row) throw new Error('updated item did not read back')

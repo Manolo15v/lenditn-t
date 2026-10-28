@@ -8,6 +8,7 @@ import { ItemList } from '../../components/items/itemList'
 import { Modal } from '../../components/ui/Modal'
 import { CardSkeleton, ErrorState } from '../../components/ui/States'
 import { Toast, type ToastMessage } from '../../components/ui/Toast'
+import { syncItemImage } from '../../lib/itemImage'
 
 // Dollars in the form, cents on the wire. Math.round keeps 0.07 from arriving
 // as 6 cents, and a blank or unparseable field means a free loan.
@@ -99,6 +100,15 @@ export function ItemDashboard() {
 
       if (!res.ok) {
         setFormError(await errorFrom(res))
+        return
+      }
+
+      const { item } = await res.json()
+      const saved = item as Item
+      const photo = await syncItemImage(saved.id, data.image)
+      if (!photo.ok) {
+        setFormError(photo.error)
+        await load()
         return
       }
 
@@ -222,6 +232,7 @@ export function ItemDashboard() {
                     editing.pricePerDayCents === 0
                       ? ''
                       : (editing.pricePerDayCents / 100).toFixed(2),
+                  imageUrl: editing.imageUrl,
                 }
               : undefined
           }

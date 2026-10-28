@@ -53,6 +53,10 @@ export const items = pgTable(
     // database so a raw insert and the seed agree with the API on what "free"
     // means, and so the column can be omitted from the wire entirely.
     pricePerDayCents: integer('price_per_day_cents').notNull().default(0),
+    // Relative filename under the API uploads dir (e.g. "{id}.webp"). Null means
+    // no photo. Never accept this from the create/patch body — only the image
+    // upload route writes it after sharp validates 800×800.
+    imagePath: text('image_path'),
     createdAt: createdAt(),
     // Items are archived, never deleted — loan history has to stay readable.
     archivedAt: timestamp('archived_at', { withTimezone: true }),

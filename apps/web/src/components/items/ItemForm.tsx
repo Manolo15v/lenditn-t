@@ -1,6 +1,7 @@
 import { ITEM_CATEGORIES, type ItemCategory } from '@lendit/shared'
 import { CircleAlert, Loader2 } from 'lucide-react'
 import { useState } from 'react'
+import { ImageField, type ImageFieldValue } from './ImageField'
 
 export interface ItemFormData {
   name: string
@@ -8,10 +9,11 @@ export interface ItemFormData {
   category: ItemCategory
   // Kept as the raw input string so a half-typed "1." does not fight the field.
   pricePerDay: string
+  image: ImageFieldValue
 }
 
 interface ItemFormProps {
-  initialData?: ItemFormData
+  initialData?: Omit<ItemFormData, 'image'> & { imageUrl?: string | null }
   onSubmit: (data: ItemFormData) => void
   onCancel: () => void
   busy?: boolean
@@ -33,6 +35,7 @@ export function ItemForm({
     description: initialData?.description ?? '',
     category: initialData?.category ?? 'Other',
     pricePerDay: initialData?.pricePerDay ?? '',
+    image: { file: null, cleared: false },
   })
 
   function handleChange(
@@ -140,6 +143,13 @@ export function ItemForm({
           disabled={busy}
         />
       </div>
+
+      <ImageField
+        existingUrl={initialData?.imageUrl}
+        value={formData.image}
+        onChange={(image) => setFormData((prev) => ({ ...prev, image }))}
+        disabled={busy}
+      />
 
       {error && (
         <p

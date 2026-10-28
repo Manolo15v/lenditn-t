@@ -23,6 +23,7 @@ export type ItemBody = {
   description: string | null
   category: string | null
   pricePerDayCents: number
+  imageUrl: string | null
   createdAt: string
   archivedAt: string | null
   isAvailable: boolean
