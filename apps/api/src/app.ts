@@ -1,3 +1,4 @@
+import { cache } from '@lendit/cache'
 import { pg } from '@lendit/db'
 import { Hono } from 'hono'
 import type { AppEnv } from './env.ts'
@@ -9,7 +10,7 @@ import { itemsRoutes } from './routes/items.ts'
 import { sessionsRoutes } from './routes/sessions.ts'
 
 const health = new Hono<AppEnv>().get('/health', async (c) => {
-  const [db, mongo] = await Promise.all([
+  const [db, mongo, cacheStatus] = await Promise.all([
     pg`select 1`.then(
       () => true,
       () => false,
@@ -18,9 +19,16 @@ const health = new Hono<AppEnv>().get('/health', async (c) => {
       () => true,
       () => false,
     ),
+    cache.status(),
   ])
+  // The cache is reported but does not decide the status: every cached read
+  // falls back to Postgres, so a missing Valkey slows the API down without
+  // breaking it. Postgres and Mongo hold data that exists nowhere else.
   const ok = db && mongo
-  return c.json({ status: ok ? 'ok' : 'degraded', db, mongo } as const, ok ? 200 : 503)
+  return c.json(
+    { status: ok ? 'ok' : 'degraded', db, mongo, cache: cacheStatus } as const,
+    ok ? 200 : 503,
+  )
 })
 
 export const app = new Hono<AppEnv>()

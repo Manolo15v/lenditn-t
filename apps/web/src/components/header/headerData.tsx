@@ -28,7 +28,10 @@ export function HeaderData() {
         aria-label="Lendit home"
       >
         <span className="size-2.5 shrink-0 rounded-full bg-[var(--primary)] shadow-[0_0_10px_var(--primary-glow)] sm:size-3" />
-        <span className="truncate text-lg font-extrabold tracking-tight text-[var(--text-primary)] sm:text-xl">
+        <span
+          className="truncate text-lg font-extrabold tracking-tight text-[var(--text-primary)] sm:text-xl"
+          style={{ cursor: 'pointer' }}
+        >
           Lendit
         </span>
       </button>

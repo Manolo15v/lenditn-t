@@ -7,6 +7,7 @@ import { ItemList } from '../../components/items/itemList'
 import { Modal } from '../../components/ui/Modal'
 import { CardSkeleton, ErrorState } from '../../components/ui/States'
 import { Toast, type ToastMessage } from '../../components/ui/Toast'
+import { syncItemImage } from '../../lib/itemImage'
 import { itemBody, itemFormData } from '../../lib/items'
 
 const messages: Record<string, string> = {
@@ -88,6 +89,15 @@ export function ItemDashboard() {
 
       if (!res.ok) {
         setFormError(await errorFrom(res))
+        return
+      }
+
+      const { item } = await res.json()
+      const saved = item as Item
+      const photo = await syncItemImage(saved.id, data.image)
+      if (!photo.ok) {
+        setFormError(photo.error)
+        await load()
         return
       }
 

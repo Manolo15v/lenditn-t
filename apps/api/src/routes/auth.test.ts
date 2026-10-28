@@ -131,6 +131,7 @@ describe.skipIf(!(await databaseIsReachable()))('auth routes', () => {
 
   test('logout deletes the session server-side, not just the cookie', async () => {
     const { cookie } = await signup()
+    expect((await me(cookie)).user).not.toBeNull()
 
     const out = await post('/api/auth/logout', {}, cookie)
     expect(out.status).toBe(200)

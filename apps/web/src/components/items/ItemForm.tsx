@@ -3,6 +3,7 @@ import { CircleAlert, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '../../lib/cn'
 import { dollarsToCents, formatCents } from '../../lib/items'
+import { ImageField, type ImageFieldValue } from './ImageField'
 
 export interface ItemFormData {
   name: string
@@ -12,10 +13,15 @@ export interface ItemFormData {
   pricePerDay: string
   // Same, and blank means no offer.
   offerPricePerDay: string
+  image: ImageFieldValue
 }
 
+// What an edit starts from: the stored photo is a URL to show, not a file the
+// form owns, so it comes in alongside the fields rather than as one of them.
+export type ItemFormInitialData = Omit<ItemFormData, 'image'> & { imageUrl?: string | null }
+
 interface ItemFormProps {
-  initialData?: ItemFormData
+  initialData?: ItemFormInitialData
   onSubmit: (data: ItemFormData) => void
   onCancel: () => void
   busy?: boolean
@@ -38,6 +44,7 @@ export function ItemForm({
     category: initialData?.category ?? 'Other',
     pricePerDay: initialData?.pricePerDay ?? '',
     offerPricePerDay: initialData?.offerPricePerDay ?? '',
+    image: { file: null, cleared: false },
   })
 
   // Mirrors the server's rule so the owner sees the problem while typing, not
@@ -196,6 +203,13 @@ export function ItemForm({
           disabled={busy}
         />
       </div>
+
+      <ImageField
+        existingUrl={initialData?.imageUrl}
+        value={formData.image}
+        onChange={(image) => setFormData((prev) => ({ ...prev, image }))}
+        disabled={busy}
+      />
 
       {error && (
         <p

@@ -58,6 +58,10 @@ export const items = pgTable(
     // ending the offer is clearing one column rather than remembering a number.
     // A loan snapshots whichever rate is in force when it is requested.
     offerPricePerDayCents: integer('offer_price_per_day_cents'),
+    // Relative filename under the API uploads dir (e.g. "{id}.webp"). Null means
+    // no photo. Never accept this from the create/patch body — only the image
+    // upload route writes it after sharp validates 800×800.
+    imagePath: text('image_path'),
     createdAt: createdAt(),
     // Items are archived, never deleted — loan history has to stay readable.
     archivedAt: timestamp('archived_at', { withTimezone: true }),

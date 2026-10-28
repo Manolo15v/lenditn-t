@@ -39,6 +39,18 @@ services:
       timeout: 7s
       retries: 15
       # start_period: 30s no es necesario para evaluar el contenedor una vez
+
+  valkey:
+    image: valkey/valkey:9-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   api:
     build:
       context: .
@@ -47,6 +59,7 @@ services:
       # Service name, not localhost — this container reaches postgres over the
       # compose network, not the host loopback.
       DATABASE_URL: postgres://lendit:lendit@postgres:5432/lendit
+      REDIS_URL: redis://valkey:6379
       API_PORT: 3000
     ports:
       - "3000:3000"
@@ -60,10 +73,13 @@ services:
       - web_app_node_modules:/repo/apps/web/node_modules
       - db_pkg_node_modules:/repo/packages/db/node_modules
       - shared_pkg_node_modules:/repo/packages/shared/node_modules
+      - cache_pkg_node_modules:/repo/packages/cache/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
+        condition: service_healthy
+      valkey:
         condition: service_healthy
 
   web:
@@ -84,6 +100,7 @@ services:
       - web_app_node_modules:/repo/apps/web/node_modules
       - db_pkg_node_modules:/repo/packages/db/node_modules
       - shared_pkg_node_modules:/repo/packages/shared/node_modules
+      - cache_pkg_node_modules:/repo/packages/cache/node_modules
     depends_on:
       - api
 
@@ -94,4 +111,5 @@ volumes:
   web_app_node_modules:
   db_pkg_node_modules:
   shared_pkg_node_modules:
+  cache_pkg_node_modules:
   mongodata:

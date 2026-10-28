@@ -22,6 +22,7 @@ import { ErrorState, Spinner } from '../../components/ui/States'
 import { Toast, type ToastMessage } from '../../components/ui/Toast'
 import { useAuth } from '../../context/AuthContext'
 import { cn } from '../../lib/cn'
+import { syncItemImage } from '../../lib/itemImage'
 import { categoryIcon, formatDate, itemBody, itemFormData, itemStatus } from '../../lib/items'
 
 const messages: Record<string, string> = {
@@ -122,8 +123,21 @@ export function ProductDetail() {
         setFormError(await errorFrom(res))
         return
       }
-      const { item: updated } = await res.json()
-      setItem(updated as Item)
+      const { item: patched } = await res.json()
+      const photo = await syncItemImage(item.id, data.image)
+      if (!photo.ok) {
+        setFormError(photo.error)
+        setItem(patched as Item)
+        return
+      }
+      // Re-read so imageUrl reflects upload/delete without a full page reload.
+      const fresh = await api.api.items[':id'].$get({ param: { id: item.id } })
+      if (fresh.ok) {
+        const body = await fresh.json()
+        if ('item' in body) setItem(body.item as Item)
+      } else {
+        setItem(patched as Item)
+      }
       setEditOpen(false)
       setToast({ text: 'Item updated.', kind: 'success' })
     } catch {
@@ -212,14 +226,26 @@ export function ProductDetail() {
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
             <div className="card overflow-hidden">
-              <div className="flex items-center justify-center border-b border-line bg-canvas py-9">
-                <span
-                  className="flex size-16 items-center justify-center rounded-xl bg-surface
-                    ring-1 ring-line"
-                  aria-hidden="true"
-                >
-                  <Icon className="size-7 text-accent" strokeWidth={1.5} />
-                </span>
+              <div className="flex items-center justify-center border-b border-line bg-canvas">
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    width={800}
+                    height={800}
+                    className="aspect-square w-full max-h-[28rem] object-cover"
+                  />
+                ) : (
+                  <div className="flex py-9">
+                    <span
+                      className="flex size-16 items-center justify-center rounded-xl bg-surface
+                        ring-1 ring-line"
+                      aria-hidden="true"
+                    >
+                      <Icon className="size-7 text-accent" strokeWidth={1.5} />
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="p-5 sm:p-6">
