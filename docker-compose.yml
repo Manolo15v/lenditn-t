@@ -60,6 +60,7 @@ services:
       # compose network, not the host loopback.
       DATABASE_URL: postgres://lendit:lendit@postgres:5432/lendit
       REDIS_URL: redis://valkey:6379
+      MONGO_URL: mongodb://lendit:lendit@mongo:27017/lendit?authSource=admin
       API_PORT: 3000
     ports:
       - "3000:3000"
